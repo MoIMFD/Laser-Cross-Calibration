@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from ..types import POINT3
+from laser_cross_calibration.types import POINT3
 
 
 @dataclass

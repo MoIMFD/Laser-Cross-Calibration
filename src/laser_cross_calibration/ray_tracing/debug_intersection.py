@@ -2,8 +2,8 @@
 
 import numpy as np
 import plotly.graph_objects as go
-from .ray import OpticalRay, intersection
-from ..types import POINT3
+from laser_cross_calibration.ray_tracing.ray import OpticalRay, intersection
+from laser_cross_calibration.types import POINT3
 
 
 def debug_ray_paths(ray1: OpticalRay, ray2: OpticalRay) -> None:

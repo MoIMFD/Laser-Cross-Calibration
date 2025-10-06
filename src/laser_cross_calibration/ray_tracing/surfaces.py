@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
-from ..constants import VSMALL, VVSMALL
-from ..types import POINT3, VECTOR3
-from ..utils import normalize
+from laser_cross_calibration.constants import VSMALL, VVSMALL
+from laser_cross_calibration.types import POINT3, VECTOR3
+from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
-    from .ray import OpticalRay
+    from laser_cross_calibration.ray_tracing.ray import OpticalRay
 
 
 def _get_surface_color(surface_id: int) -> str:

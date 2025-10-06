@@ -1,7 +1,7 @@
 """Ray tracing submodule for optical simulations."""
 
 # Materials
-from .materials import (
+from laser_cross_calibration.ray_tracing.materials import (
     AIR,
     GLASS_BK7,
     GLASS_FUSED_SILICA,
@@ -19,13 +19,13 @@ from .materials import (
 )
 
 # Enhanced optical components
-from .optics import MaterialLibrary, OpticalElement, OpticalInterface, WaterTank
+from laser_cross_calibration.ray_tracing.optics import MaterialLibrary, OpticalElement, OpticalInterface, WaterTank
 
 # Core ray classes
-from .ray import OpticalRay, line_segment_intersection, ray_intersection
+from laser_cross_calibration.ray_tracing.ray import OpticalRay, line_segment_intersection, ray_intersection
 
 # Surface classes
-from .surfaces import (
+from laser_cross_calibration.ray_tracing.surfaces import (
     EllipticCylinder,
     FiniteCylinder,
     InfiniteCylinder,
@@ -38,10 +38,10 @@ from .surfaces import (
 )
 
 # Complete optical system
-from .system import OpticalSystem
+from laser_cross_calibration.ray_tracing.system import OpticalSystem
 
 # Visualization
-from .visualization import (
+from laser_cross_calibration.ray_tracing.visualization import (
     add_intersection_points,
     add_points_to_figure,
     visualize_scene,

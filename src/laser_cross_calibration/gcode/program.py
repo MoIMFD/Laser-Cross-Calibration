@@ -3,8 +3,8 @@ from itertools import chain
 
 from pydantic import BaseModel, Field
 
-from .. import __version__
-from .command import BaseCommand, CommentCommand
+from laser_cross_calibration import __version__
+from laser_cross_calibration.gcode.command import BaseCommand, CommentCommand
 
 DEFAULT_HEADER = [
     CommentCommand(comment=f"GCode create by ... Version {__version__}"),

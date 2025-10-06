@@ -12,8 +12,8 @@ Kramer Harrison, 2025
 # common aliases for ndarray and array_equal across backends --
 import numpy as _np
 
-from . import numpy_backend
-from .utils import to_numpy  # noqa: F401
+from laser_cross_calibration.backend import numpy_backend
+from laser_cross_calibration.backend.utils import to_numpy  # noqa: F401
 
 try:
     import torch as _torch
@@ -32,7 +32,7 @@ _torch_equal = (
 
 def array_equal(a, b):
     """Elementwise equality test for arrays/tensors in the active backend."""
-    from . import get_backend
+    from laser_cross_calibration.backend import get_backend
 
     if get_backend() == "torch" and _torch_equal is not None:
         return _torch_equal(a, b)

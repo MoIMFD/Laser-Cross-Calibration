@@ -7,8 +7,8 @@ from typing import Optional, List, Union
 
 import numpy as np
 
-from .types import POINT3, VECTOR3, MATRIX3x3
-from .utils import normalize
+from laser_cross_calibration.types import POINT3, VECTOR3, MATRIX3x3
+from laser_cross_calibration.utils import normalize
 
 
 @dataclass

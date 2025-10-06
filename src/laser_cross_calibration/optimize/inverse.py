@@ -10,8 +10,8 @@ import warnings
 import numpy as np
 from scipy.optimize import Bounds, minimize
 
-from ..ray_tracing import OpticalSystem
-from ..types import POINT3
+from laser_cross_calibration.ray_tracing import OpticalSystem
+from laser_cross_calibration.types import POINT3
 
 
 class OptimizationStatus(Enum):

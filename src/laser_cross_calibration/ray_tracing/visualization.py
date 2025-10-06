@@ -7,9 +7,9 @@ from typing import Optional
 import numpy as np
 import plotly.graph_objects as go
 
-from ..types import POINT3
-from .ray import OpticalRay
-from .surfaces import Surface, TriSurface, STLSurface
+from laser_cross_calibration.types import POINT3
+from laser_cross_calibration.ray_tracing.ray import OpticalRay
+from laser_cross_calibration.ray_tracing.surfaces import Surface, TriSurface, STLSurface
 
 
 def visualize_scene(
@@ -186,7 +186,7 @@ def add_intersection_points(fig: go.Figure, ray1: OpticalRay, ray2: OpticalRay) 
         ray1: First ray
         ray2: Second ray
     """
-    from .ray import ray_intersection
+    from laser_cross_calibration.ray_tracing.ray import ray_intersection
 
     intersections = ray_intersection(ray1, ray2)
 

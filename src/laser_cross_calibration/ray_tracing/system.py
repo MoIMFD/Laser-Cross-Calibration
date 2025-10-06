@@ -8,14 +8,14 @@ from typing import Optional
 
 import plotly.graph_objects as go
 
-from ..calibration import DEFAULT_UNIT, CalibrationPoint, Stage
-from ..constants import VSMALL
-from ..types import POINT3
-from ..utils import normalize
-from .optics import MaterialLibrary, OpticalElement, OpticalInterface
-from .ray import OpticalRay, ray_intersection
-from .surfaces import Surface
-from .. import backend as be
+from laser_cross_calibration.calibration import DEFAULT_UNIT, CalibrationPoint, Stage
+from laser_cross_calibration.constants import VSMALL
+from laser_cross_calibration.types import POINT3
+from laser_cross_calibration.utils import normalize
+from laser_cross_calibration.ray_tracing.optics import MaterialLibrary, OpticalElement, OpticalInterface
+from laser_cross_calibration.ray_tracing.ray import OpticalRay, ray_intersection
+from laser_cross_calibration.ray_tracing.surfaces import Surface
+from laser_cross_calibration import backend as be
 
 
 @dataclass
@@ -141,7 +141,7 @@ class OpticalSystem:
                 # Use the last known medium, or default fallback
                 if current_medium is None:
                     # If we never hit an interface, assume starting in air
-                    from .materials import get_material_or_raise
+                    from laser_cross_calibration.ray_tracing.materials import get_material_or_raise
 
                     current_medium = get_material_or_raise("air")
                 ray.propagate(self.max_propagation_distance, current_medium)
@@ -247,7 +247,7 @@ class OpticalSystem:
         Returns:
             Plotly figure object
         """
-        from .visualization import visualize_scene
+        from laser_cross_calibration.ray_tracing.visualization import visualize_scene
 
         ray1, ray2 = self.propagate_rays_through_system()
         rays = [ray1, ray2]

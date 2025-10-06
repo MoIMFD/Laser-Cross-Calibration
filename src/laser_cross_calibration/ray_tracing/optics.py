@@ -7,10 +7,10 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from ..types import POINT3, VECTOR3
-from .materials import AIR, GLASS_BK7, WATER, BaseMaterial
-from .ray import OpticalRay
-from .surfaces import Surface
+from laser_cross_calibration.types import POINT3, VECTOR3
+from laser_cross_calibration.ray_tracing.materials import AIR, GLASS_BK7, WATER, BaseMaterial
+from laser_cross_calibration.ray_tracing.ray import OpticalRay
+from laser_cross_calibration.ray_tracing.surfaces import Surface
 
 
 @dataclass
@@ -83,7 +83,7 @@ class OpticalInterface:
             return True
 
         # For bounded surfaces, delegate to the geometry
-        from .surfaces import RectangularPlane
+        from laser_cross_calibration.ray_tracing.surfaces import RectangularPlane
 
         if isinstance(self.geometry, RectangularPlane):
             # Check if point is within rectangular bounds
@@ -194,7 +194,7 @@ class OpticalElement:
         Returns:
             OpticalElement representing the bounded glass plate
         """
-        from .surfaces import RectangularPlane
+        from laser_cross_calibration.ray_tracing.surfaces import RectangularPlane
 
         center = np.array(center_position)
         normal = np.array(normal_direction)
@@ -250,7 +250,7 @@ class OpticalElement:
         outer_material: BaseMaterial = AIR,
         inner_material: BaseMaterial = AIR,
     ):
-        from .surfaces import InfiniteCylinder
+        from laser_cross_calibration.ray_tracing.surfaces import InfiniteCylinder
 
         outer_surface = InfiniteCylinder(center, axis, outer_radius)
         inner_surface = InfiniteCylinder(center, axis, inner_radius)
@@ -288,7 +288,7 @@ class OpticalElement:
         outer_material: BaseMaterial = AIR,
         inner_material: BaseMaterial = AIR,
     ):
-        from .surfaces import FiniteCylinder
+        from laser_cross_calibration.ray_tracing.surfaces import FiniteCylinder
 
         outer_surface = FiniteCylinder(
             center=center, axis=axis, radius=outer_radius, length=length
@@ -354,7 +354,7 @@ class MaterialLibrary:
         lib.add_material(GLASS_BK7)
 
         # Add additional materials from materials module
-        from .materials import GLASS_FUSED_SILICA, PMMA, POLYCARBONATE
+        from laser_cross_calibration.ray_tracing.materials import GLASS_FUSED_SILICA, PMMA, POLYCARBONATE
 
         lib.add_material(GLASS_FUSED_SILICA)
         lib.add_material(PMMA)
@@ -396,7 +396,7 @@ class WaterTank:
         # For now, implement front and back walls
         # TODO: Add full 3D tank geometry
 
-        from .surfaces import Plane
+        from laser_cross_calibration.ray_tracing.surfaces import Plane
 
         # Front wall outer surface (ambient -> glass)
         front_outer = Plane(point=[0, 0, -self.wall_thickness / 2], normal=[0, 0, 1])

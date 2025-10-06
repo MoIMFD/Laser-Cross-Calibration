@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..constants import INTERSECTION_THRESHOLD, VSMALL
-from ..types import POINT3, VECTOR3
-from ..utils import normalize
-from .materials import BaseMaterial
+from laser_cross_calibration.constants import INTERSECTION_THRESHOLD, VSMALL
+from laser_cross_calibration.types import POINT3, VECTOR3
+from laser_cross_calibration.utils import normalize
+from laser_cross_calibration.ray_tracing.materials import BaseMaterial
 
 
 class OpticalRay:
