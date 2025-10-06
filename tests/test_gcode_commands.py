@@ -2,8 +2,13 @@
 
 import pytest
 from src.laser_cross_calibration.gcode import (
-    RAPID_MOVE, LINEAR_MOVE, PAUSE, COMMENT, SET_PIN,
-    GCodeCommandType, GCodeProgram
+    RAPID_MOVE,
+    LINEAR_MOVE,
+    PAUSE,
+    COMMENT,
+    SET_PIN,
+    GCodeCommandType,
+    GCodeProgram,
 )
 
 
@@ -103,13 +108,15 @@ class TestGCodeProgram:
 
     def test_program_with_commands(self):
         """Test program with multiple commands."""
-        program = GCodeProgram(commands=[
-            COMMENT(comment="Test program"),
-            RAPID_MOVE(x=0, y=0, z=0),
-            LINEAR_MOVE(x=100, f=200),
-            PAUSE(s=1.0),
-        ])
-        
+        program = GCodeProgram(
+            commands=[
+                COMMENT(comment="Test program"),
+                RAPID_MOVE(x=0, y=0, z=0),
+                LINEAR_MOVE(x=100, f=200),
+                PAUSE(s=1.0),
+            ]
+        )
+
         expected = "; Test program\nG0 X0 Y0 Z0\nG1 X100 F200\nG4 S1.0"
         assert program.render() == expected
 
@@ -118,7 +125,7 @@ class TestGCodeProgram:
         program = GCodeProgram()
         program.add_command(RAPID_MOVE(x=10, y=20))
         program.add_command(LINEAR_MOVE(x=30, f=100))
-        
+
         expected = "G0 X10 Y20\nG1 X30 F100"
         assert program.render() == expected
 
@@ -130,7 +137,7 @@ class TestGCodeProgram:
         program.add_command(LINEAR_MOVE(x=50, y=50, f=150))
         program.add_command(PAUSE(p=500))
         program.add_command(COMMENT(comment="Program complete"))
-        
+
         expected = (
             "; Starting program\n"
             "G0 X0 Y0 Z5\n"
@@ -194,7 +201,7 @@ class TestCallableAPI:
         linear = LINEAR_MOVE(x=30, f=100)
         pause = PAUSE(s=2.0)
         comment = COMMENT(comment="test")
-        
+
         assert rapid.render() == "G0 X10 Y20"
         assert linear.render() == "G1 X30 F100"
         assert pause.render() == "G4 S2.0"
@@ -204,7 +211,7 @@ class TestCallableAPI:
         """Test that __call__ and create_instance are equivalent."""
         cmd1 = RAPID_MOVE(x=10, y=20, z=5)
         cmd2 = RAPID_MOVE.create_instance(x=10, y=20, z=5)
-        
+
         assert cmd1.render() == cmd2.render()
         assert cmd1.params == cmd2.params
         assert cmd1.command.type == cmd2.command.type

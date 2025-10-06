@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 
+from ..constants import INTERSECTION_THRESHOLD, VSMALL
 from ..types import POINT3, VECTOR3
 from ..utils import normalize
-from ..constants import VSMALL, INTERSECTION_THRESHOLD
-from .materials import Medium
+from .materials import BaseMaterial
 
 
 class OpticalRay:
@@ -68,9 +68,9 @@ class OpticalRay:
         self.path_positions: list[POINT3] = [self.origin.copy()]
         self.path_directions: list[VECTOR3] = [self.direction.copy()]
         self.segment_distances: list[float] = []
-        self.media_history: list[Medium] = []
+        self.media_history: list[BaseMaterial] = []
 
-    def propagate(self, distance: float, medium: Medium) -> None:
+    def propagate(self, distance: float, medium: BaseMaterial) -> None:
         """
         Propagate the ray through a medium by a given distance.
 
@@ -91,15 +91,18 @@ class OpticalRay:
         self.media_history.append(medium)
 
     def refract(
-        self, surface_normal: VECTOR3, medium_from: Medium, medium_to: Medium
+        self,
+        surface_normal: VECTOR3,
+        medium_from: BaseMaterial,
+        medium_to: BaseMaterial,
     ) -> bool:
         """
         Apply Snell's law refraction at a surface interface.
 
         Args:
             surface_normal: Surface normal vector (will be normalized)
-            medium_from: Medium the ray is coming from
-            medium_to: Medium the ray is entering
+            medium_from: BaseMaterial the ray is coming from
+            medium_to: BaseMaterial the ray is entering
 
         Returns:
             True if refraction occurred, False if total internal reflection
@@ -118,7 +121,7 @@ class OpticalRay:
             cos_theta_i = -cos_theta_i
 
         # Apply Snell's law
-        n_ratio = medium_from.ior / medium_to.ior
+        n_ratio = medium_from.n() / medium_to.n()
         sin_theta_i_sq = 1.0 - cos_theta_i**2
         sin_theta_t_sq = n_ratio**2 * sin_theta_i_sq
 
@@ -158,6 +161,24 @@ class OpticalRay:
             f"direction={self.current_direction}, "
             f"is_alive={self.is_alive})"
         )
+
+    @classmethod
+    def ray_x(cls, origin=np.zeros(3)):
+        direction = np.zeros(3)
+        direction[0] = 1.0
+        return cls(origin=origin, direction=direction)
+
+    @classmethod
+    def ray_y(cls, origin=np.zeros(3)):
+        direction = np.zeros(3)
+        direction[1] = 1.0
+        return cls(origin=origin, direction=direction)
+
+    @classmethod
+    def ray_z(cls, origin=np.zeros(3)):
+        direction = np.zeros(3)
+        direction[2] = 1.0
+        return cls(origin=origin, direction=direction)
 
 
 def line_segment_intersection(

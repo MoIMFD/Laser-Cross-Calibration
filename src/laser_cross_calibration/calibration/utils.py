@@ -19,7 +19,7 @@ def ensure_unit(value, unit=None):
 
 class StageOutOfLimitsError(ValueError):
     """Exception raised when stage position is outside allowed limits."""
-    
+
     def __init__(self, point: POINT3, limits: tuple, message: str = None):
         self.point = point
         self.limits = limits

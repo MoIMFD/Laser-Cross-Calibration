@@ -10,11 +10,10 @@ from .utils import ensure_unit, DEFAULT_UNIT, StageOutOfLimitsError, ureg
 __all__ = [
     # Core classes
     "Stage",
-    "CalibrationPoint", 
-    
+    "CalibrationPoint",
     # Utilities
     "ensure_unit",
-    "DEFAULT_UNIT", 
+    "DEFAULT_UNIT",
     "StageOutOfLimitsError",
     "ureg",
 ]
