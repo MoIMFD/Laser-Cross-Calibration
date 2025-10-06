@@ -14,34 +14,38 @@ from .utils import ensure_unit, DEFAULT_UNIT, StageOutOfLimitsError
 class Stage:
     """
     Motorized 3-axis stage for laser cross-calibration.
-    
+
     Controls positioning of laser sources and provides coordinate transformations
     between stage-local coordinates and world coordinates.
-    
+
     Attributes:
         position_local: Current stage position in local coordinates
         arm1: Offset vector to first laser mount point
-        arm2: Offset vector to second laser mount point  
+        arm2: Offset vector to second laser mount point
         beam1_normal: Direction vector for first laser beam
         beam2_normal: Direction vector for second laser beam
         limits: (min_pos, max_pos) limits for stage positioning
         coordinate_system: Stage coordinate system for world transformations
     """
-    
+
     position_local: POINT3 = field(
         default_factory=lambda: np.zeros(3, dtype=float) * DEFAULT_UNIT
     )
     arm1: VECTOR3 = field(
-        default_factory=lambda: np.array([100.0, 0.0, 0.0], dtype=np.float64) * DEFAULT_UNIT
+        default_factory=lambda: np.array([100.0, 0.0, 0.0], dtype=np.float64)
+        * DEFAULT_UNIT
     )
     arm2: VECTOR3 = field(
-        default_factory=lambda: np.array([0.0, 100.0, 0.0], dtype=np.float64) * DEFAULT_UNIT
+        default_factory=lambda: np.array([0.0, 100.0, 0.0], dtype=np.float64)
+        * DEFAULT_UNIT
     )
     beam1_normal: VECTOR3 = field(
-        default_factory=lambda: np.array([0.0, 1.0, 0.0], dtype=np.float64) * DEFAULT_UNIT
+        default_factory=lambda: np.array([0.0, 1.0, 0.0], dtype=np.float64)
+        * DEFAULT_UNIT
     )
     beam2_normal: VECTOR3 = field(
-        default_factory=lambda: np.array([1.0, 0.0, 0.0], dtype=np.float64) * DEFAULT_UNIT
+        default_factory=lambda: np.array([1.0, 0.0, 0.0], dtype=np.float64)
+        * DEFAULT_UNIT
     )
     limits: tuple[VECTOR3, VECTOR3] = (
         np.array([-50.0, -50.0, -50.0]) * DEFAULT_UNIT,
@@ -86,11 +90,11 @@ class Stage:
     def set_local_position(self, position: POINT3, unit: pint.Unit = DEFAULT_UNIT):
         """
         Set stage to new local position.
-        
+
         Args:
             position: New position coordinates
             unit: Unit for position values
-            
+
         Returns:
             Self for method chaining
         """

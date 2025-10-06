@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 import numpy as np
 
 from ..types import POINT3, VECTOR3
-from .materials import Medium, AIR, GLASS_BK7, WATER
-from .surfaces import Surface
+from .materials import AIR, GLASS_BK7, WATER, BaseMaterial
 from .ray import OpticalRay
+from .surfaces import Surface
 
 
 @dataclass
@@ -23,15 +23,15 @@ class OpticalInterface:
 
     Attributes:
         geometry: The surface geometry for ray intersection
-        material_pre: Medium before the surface (incident side)
-        material_post: Medium after the surface (transmitted side)
+        material_pre: BaseMaterial before the surface (incident side)
+        material_post: BaseMaterial after the surface (transmitted side)
         surface_id: Optional identifier for the interface
         is_bounded: Whether this interface has finite dimensions
     """
 
     geometry: Surface
-    material_pre: Medium
-    material_post: Medium
+    material_pre: BaseMaterial
+    material_post: BaseMaterial
     surface_id: Optional[str] = None
     is_bounded: bool = field(default=True)  # Assume bounded unless specified
 
@@ -48,7 +48,7 @@ class OpticalInterface:
         # the geometry itself handles the boundary check
         return intersection
 
-    def get_next_medium(self, current_medium: Medium) -> Medium:
+    def get_next_medium(self, current_medium: BaseMaterial) -> BaseMaterial:
         """
         Determine the next medium based on current medium.
 
@@ -112,7 +112,7 @@ class OpticalElement:
     name: str
     front_interface: OpticalInterface
     back_interface: OpticalInterface
-    bulk_material: Medium
+    bulk_material: BaseMaterial
     thickness: float
 
     @property
@@ -127,20 +127,20 @@ class OpticalElement:
         front_surface: Surface,
         back_surface: Surface,
         thickness: float,
-        glass_material: Medium = GLASS_BK7,
-        ambient_material: Medium = AIR,
+        glass_material: BaseMaterial = GLASS_BK7,
+        ambient_material: BaseMaterial = AIR,
     ) -> "OpticalElement":
         """
         Factory method for creating a glass plate element.
-        
+
         Args:
             name: Element identifier
             front_surface: Entry surface geometry
-            back_surface: Exit surface geometry  
+            back_surface: Exit surface geometry
             thickness: Plate thickness
             glass_material: Glass material
             ambient_material: Surrounding medium
-            
+
         Returns:
             OpticalElement representing the glass plate
         """
@@ -175,8 +175,8 @@ class OpticalElement:
         width: float,
         height: float,
         thickness: float,
-        glass_material: Medium = GLASS_BK7,
-        ambient_material: Medium = AIR,
+        glass_material: BaseMaterial = GLASS_BK7,
+        ambient_material: BaseMaterial = AIR,
     ) -> "OpticalElement":
         """
         Factory method for creating a bounded glass plate with defined dimensions.
@@ -237,40 +237,84 @@ class OpticalElement:
             bulk_material=glass_material,
             thickness=thickness,
         )
-        """
-        Factory method for creating a glass plate element.
-        
-        Args:
-            name: Element identifier
-            front_surface: Entry surface geometry
-            back_surface: Exit surface geometry  
-            thickness: Plate thickness
-            glass_material: Glass material
-            ambient_material: Surrounding medium
-            
-        Returns:
-            OpticalElement representing the glass plate
-        """
-        front_interface = OpticalInterface(
-            geometry=front_surface,
-            material_pre=ambient_material,
+
+    @classmethod
+    def create_infinite_tube(
+        cls,
+        name: str,
+        center: POINT3,
+        axis: VECTOR3,
+        inner_radius: float,
+        outer_radius: float,
+        glass_material: BaseMaterial = GLASS_BK7,
+        outer_material: BaseMaterial = AIR,
+        inner_material: BaseMaterial = AIR,
+    ):
+        from .surfaces import InfiniteCylinder
+
+        outer_surface = InfiniteCylinder(center, axis, outer_radius)
+        inner_surface = InfiniteCylinder(center, axis, inner_radius)
+
+        outer_interface = OpticalInterface(
+            geometry=outer_surface,
+            material_pre=outer_material,
             material_post=glass_material,
-            surface_id=f"{name}_front",
         )
 
-        back_interface = OpticalInterface(
-            geometry=back_surface,
+        inner_interface = OpticalInterface(
+            geometry=inner_surface,
             material_pre=glass_material,
-            material_post=ambient_material,
-            surface_id=f"{name}_back",
+            material_post=inner_material,
         )
 
         return cls(
             name=name,
-            front_interface=front_interface,
-            back_interface=back_interface,
+            front_interface=outer_interface,
+            back_interface=inner_interface,
             bulk_material=glass_material,
-            thickness=thickness,
+            thickness=outer_radius - inner_radius,
+        )
+
+    @classmethod
+    def create_finite_tube(
+        cls,
+        name: str,
+        center: POINT3,
+        axis: VECTOR3,
+        inner_radius: float,
+        outer_radius: float,
+        length: float,
+        glass_material: BaseMaterial = GLASS_BK7,
+        outer_material: BaseMaterial = AIR,
+        inner_material: BaseMaterial = AIR,
+    ):
+        from .surfaces import FiniteCylinder
+
+        outer_surface = FiniteCylinder(
+            center=center, axis=axis, radius=outer_radius, length=length
+        )
+        inner_surface = FiniteCylinder(
+            center=center, axis=axis, radius=inner_radius, length=length
+        )
+
+        outer_interface = OpticalInterface(
+            geometry=outer_surface,
+            material_pre=outer_material,
+            material_post=glass_material,
+        )
+
+        inner_interface = OpticalInterface(
+            geometry=inner_surface,
+            material_pre=glass_material,
+            material_post=inner_material,
+        )
+
+        return cls(
+            name=name,
+            front_interface=outer_interface,
+            back_interface=inner_interface,
+            bulk_material=glass_material,
+            thickness=outer_radius - inner_radius,
         )
 
 
@@ -283,13 +327,13 @@ class MaterialLibrary:
     material system, with support for common optical materials.
     """
 
-    materials: Dict[str, Medium] = field(default_factory=dict)
+    materials: Dict[str, BaseMaterial] = field(default_factory=dict)
 
-    def add_material(self, medium: Medium) -> None:
+    def add_material(self, medium: BaseMaterial) -> None:
         """Add a material to the library."""
         self.materials[medium.name] = medium
 
-    def get_material(self, name: str) -> Medium:
+    def get_material(self, name: str) -> BaseMaterial:
         """Retrieve a material by name."""
         if name not in self.materials:
             raise ValueError(f"Material '{name}' not found in library")
@@ -331,9 +375,9 @@ class WaterTank:
     name: str
     inner_dimensions: VECTOR3  # [width, height, depth] of water region
     wall_thickness: float
-    wall_material: Medium = field(default_factory=lambda: GLASS_BK7)
-    interior_material: Medium = field(default_factory=lambda: WATER)
-    ambient_material: Medium = field(default_factory=lambda: AIR)
+    wall_material: BaseMaterial = field(default_factory=lambda: GLASS_BK7)
+    interior_material: BaseMaterial = field(default_factory=lambda: WATER)
+    ambient_material: BaseMaterial = field(default_factory=lambda: AIR)
 
     def generate_interfaces(self) -> List[OpticalInterface]:
         """

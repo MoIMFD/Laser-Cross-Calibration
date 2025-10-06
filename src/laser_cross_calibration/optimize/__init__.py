@@ -4,6 +4,6 @@ from .inverse import StagePositionOptimizer, OptimizationResult, OptimizationOpe
 
 __all__ = [
     "StagePositionOptimizer",
-    "OptimizationResult", 
+    "OptimizationResult",
     "OptimizationOperand",
 ]
