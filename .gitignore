@@ -3,9 +3,7 @@
 .direnv/
 
 # knowledge base
-CLAUDE.md
-CLAUDE.local.md
-knowledge-base
+ai_*
 
 # example data
 example-data/

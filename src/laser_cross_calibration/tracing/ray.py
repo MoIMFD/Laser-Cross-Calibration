@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from laser_cross_calibration.constants import INTERSECTION_THRESHOLD, VSMALL
-from laser_cross_calibration.types import POINT3, VECTOR3
 from laser_cross_calibration.utils import normalize
-from laser_cross_calibration.ray_tracing.materials import BaseMaterial
+
+if TYPE_CHECKING:
+    from laser_cross_calibration.materials.base import BaseMaterial
+    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class OpticalRay:
@@ -163,19 +167,19 @@ class OpticalRay:
         )
 
     @classmethod
-    def ray_x(cls, origin=np.zeros(3)):
+    def ray_x(cls, origin=(0, 0, 0)) -> OpticalRay:
         direction = np.zeros(3)
         direction[0] = 1.0
         return cls(origin=origin, direction=direction)
 
     @classmethod
-    def ray_y(cls, origin=np.zeros(3)):
+    def ray_y(cls, origin=(0, 0, 0)) -> OpticalRay:
         direction = np.zeros(3)
         direction[1] = 1.0
         return cls(origin=origin, direction=direction)
 
     @classmethod
-    def ray_z(cls, origin=np.zeros(3)):
+    def ray_z(cls, origin=(0, 0, 0)) -> OpticalRay:
         direction = np.zeros(3)
         direction[2] = 1.0
         return cls(origin=origin, direction=direction)

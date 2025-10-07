@@ -2,6 +2,10 @@
 
 A precision laser cross-calibration system for volumetric PIV (Particle Image Velocimetry) camera calibration using ray tracing through complex optical geometries.
 
+## Goal
+
+
+
 ## Surface Normal and Material Logic
 
 This system uses a pure interface-based approach for optical ray tracing, where materials are defined at interfaces rather than as ambient media.
