@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from laser_cross_calibration.materials.base import BaseMaterial
-from laser_cross_calibration.surfaces.base import Surface
-from laser_cross_calibration.tracing.ray import OpticalRay
+if TYPE_CHECKING:
+    from laser_cross_calibration.materials.base import BaseMaterial
+    from laser_cross_calibration.surfaces.base import Surface
+    from laser_cross_calibration.tracing.ray import OpticalRay
 
 
 @dataclass
@@ -29,7 +30,7 @@ class OpticalInterface:
     geometry: Surface
     material_pre: BaseMaterial
     material_post: BaseMaterial
-    surface_id: Optional[int] = None
+    surface_id: int | None = None
     is_bounded: bool = field(default=True)
 
     def intersect(self, ray: OpticalRay):

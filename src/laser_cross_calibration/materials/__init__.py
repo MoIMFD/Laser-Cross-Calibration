@@ -1,4 +1,5 @@
 """Material definitions for optical ray tracing."""
+from __future__ import annotations
 
 from laser_cross_calibration.materials.base import BaseMaterial
 from laser_cross_calibration.materials.constant import ConstantMaterial

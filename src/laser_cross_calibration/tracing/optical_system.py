@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from laser_cross_calibration.materials import AIR
-from laser_cross_calibration.materials.base import BaseMaterial
-from laser_cross_calibration.tracing.optical_interface import OpticalInterface
-from laser_cross_calibration.tracing.ray import OpticalRay
 from laser_cross_calibration.utils import normalize
-from laser_cross_calibration.surfaces import IntersectionResult
+
+if TYPE_CHECKING:
+    from laser_cross_calibration.materials.base import BaseMaterial
+    from laser_cross_calibration.surfaces import IntersectionResult
+    from laser_cross_calibration.tracing.optical_interface import OpticalInterface
+    from laser_cross_calibration.tracing.ray import OpticalRay
 
 
 class OpticalSystem:

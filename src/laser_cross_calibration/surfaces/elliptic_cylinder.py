@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.graph_objects as go
 
+from laser_cross_calibration.constants import VSMALL, VVSMALL
 from laser_cross_calibration.surfaces.base import (
-    Surface,
     IntersectionResult,
+    Surface,
     get_colorscale,
 )
-from laser_cross_calibration.types import POINT3, VECTOR3
-from laser_cross_calibration.constants import VSMALL, VVSMALL
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
     from laser_cross_calibration.tracing import OpticalRay
+    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class EllipticCylinder(Surface):
@@ -37,7 +37,8 @@ class EllipticCylinder(Surface):
             axis: Direction of cylinder axis (will be normalized)
             major_radius: Radius along major axis of ellipse
             minor_radius: Radius along minor axis of ellipse
-            major_axis_direction: Direction of major axis in plane perpendicular to cylinder axis
+            major_axis_direction: Direction of major axis in plane perpendicular
+                to the cylinder axis
         """
         super().__init__(**kwargs)
         self.center = np.array(center, dtype=np.float64)
@@ -110,19 +111,6 @@ class EllipticCylinder(Surface):
         result.surface_id = self.surface_id
 
         return result
-
-    def get_normal_at_point(self, point: POINT3) -> VECTOR3:
-        point_rel = point - self.center
-        u_comp = np.dot(point_rel, self.major_axis)
-        v_comp = np.dot(point_rel, self.minor_axis)
-
-        a = self.major_radius
-        b = self.minor_radius
-
-        normal_local = (2 * u_comp / (a**2)) * self.major_axis + (
-            2 * v_comp / (b**2)
-        ) * self.minor_axis
-        return normalize(normal_local)
 
     def to_plotly_surface(self) -> list[go.Surface]:
         # Generate elliptic cylinder surface in local coordinates

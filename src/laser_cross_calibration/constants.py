@@ -1,6 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from laser_cross_calibration.types import POINT3, VECTOR3
+if TYPE_CHECKING:
+    from laser_cross_calibration.types import POINT3, VECTOR3
 
 VSMALL = 1e-8
 VVSMALL = 1e-12  # For preventing division by zero

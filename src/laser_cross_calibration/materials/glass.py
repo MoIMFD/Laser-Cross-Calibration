@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 from laser_cross_calibration.materials.base import BaseMaterial
@@ -24,9 +22,7 @@ class SellmeierGlass(BaseMaterial):
         self.B = np.array(B_coeffs)
         self.C = np.array(C_coeffs)
 
-    def n(
-        self, wavelength: float = 589.3, temperature: Optional[float] = None
-    ) -> float:
+    def n(self, wavelength: float = 589.3, temperature: float | None = None) -> float:
         """
         Calculate refractive index using Sellmeier formula.
 
@@ -57,4 +53,9 @@ class SellmeierGlass(BaseMaterial):
         return 0.0
 
     def __str__(self) -> str:
-        return f"SellmeierGlass(name='{self.name}', B={self.B.tolist()}, C={self.C.tolist()})"
+        return (
+            "SellmeierGlass("
+            f"name='{self.name}', "
+            f"B={self.B.tolist()}, "
+            f"C={self.C.tolist()})"
+        )

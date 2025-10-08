@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from laser_cross_calibration.constants import INTERSECTION_THRESHOLD, VSMALL
-from laser_cross_calibration.types import POINT3
 
 if TYPE_CHECKING:
     from laser_cross_calibration.tracing.ray import OpticalRay
+    from laser_cross_calibration.types import POINT3
 
 
 def line_segment_intersection(

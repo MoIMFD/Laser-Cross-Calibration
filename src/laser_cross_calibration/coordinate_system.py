@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from scipy.spatial.transform import Rotation as R
-
-import numpy as np
-
 
 class CoordinateSystem:
     def __init__(

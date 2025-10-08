@@ -4,8 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from laser_cross_calibration.sources.base import LaserSource
-from laser_cross_calibration.tracing import OpticalSystem
-from laser_cross_calibration.tracing import OpticalRay
+from laser_cross_calibration.tracing import OpticalRay, OpticalSystem
 
 
 class Scene:
@@ -140,9 +139,12 @@ class Scene:
 
 class RayVisualizer:
     def __init__(self, color: str | None = None, name: str | None = None):
-        self.color = (
-            color
-            or f"rgba({np.random.random()}, {np.random.random()}, {np.random.random()}, 0.8)",
+        self.color = color or (
+            "rgba("
+            f"{np.random.random()}, "
+            f"{np.random.random()}, "
+            f"{np.random.random()}, "
+            "0.8)"
         )
         self.name = name or "Ray"
 

@@ -1,21 +1,22 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.graph_objects as go
 
+from laser_cross_calibration.constants import VSMALL
 from laser_cross_calibration.surfaces.base import (
-    Surface,
     IntersectionResult,
+    Surface,
     get_surface_color,
 )
-from laser_cross_calibration.types import POINT3, VECTOR3
-from laser_cross_calibration.constants import VSMALL
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
+    import plotly.graph_objects as go
+
     from laser_cross_calibration.tracing import OpticalRay
+    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class RectangularPlane(Surface):
@@ -36,7 +37,8 @@ class RectangularPlane(Surface):
             normal: Normal vector to the plane
             width: Width of rectangle
             height: Height of rectangle
-            width_direction: Direction of width axis (will be projected to plane). If None, auto-generated.
+            width_direction: Direction of width axis (will be projected to plane).
+                If None, auto-generated.
         """
         super().__init__(**kwargs)
         self.center = np.array(center, dtype=np.float64)
@@ -161,11 +163,8 @@ class RectangularPlane(Surface):
 
         return result
 
-    def get_normal_at_point(self, point: POINT3) -> VECTOR3:
-        return self.normal.copy()
-
     def to_plotly_surface(
-        self, bounds: Optional[tuple] = None, show_normals: bool = False
+        self, bounds: tuple | None = None, show_normals: bool = False
     ) -> list[go.Mesh3d] | list[go.Mesh3d | go.Scatter3d]:
         import plotly.graph_objects as go
 

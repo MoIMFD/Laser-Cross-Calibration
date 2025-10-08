@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.graph_objects as go
 
-from laser_cross_calibration.surfaces.base import (
-    IntersectionResult,
-)
-from laser_cross_calibration.types import POINT3, VECTOR3
 from laser_cross_calibration.constants import NAN_POINT3, NAN_VECTOR3
 from laser_cross_calibration.surfaces.infinite_cylinder import InfiniteCylinder
 
 if TYPE_CHECKING:
+    import plotly.graph_objects as go
+
+    from laser_cross_calibration.surfaces.base import (
+        IntersectionResult,
+    )
     from laser_cross_calibration.tracing import OpticalRay
+    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class FiniteCylinder(InfiniteCylinder):

@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.graph_objects as go
 
+from laser_cross_calibration.constants import VSMALL
 from laser_cross_calibration.surfaces.base import (
-    Surface,
     IntersectionResult,
+    Surface,
     get_colorscale,
 )
-from laser_cross_calibration.types import POINT3, VECTOR3
-from laser_cross_calibration.constants import VSMALL
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
     from laser_cross_calibration.tracing import OpticalRay
+    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class Plane(Surface):
@@ -77,9 +77,6 @@ class Plane(Surface):
         result.surface_id = self.surface_id
 
         return result
-
-    def get_normal_at_point(self, point: POINT3) -> VECTOR3:
-        return self.normal.copy()
 
     def to_plotly_surface(
         self, show_normals: bool = False

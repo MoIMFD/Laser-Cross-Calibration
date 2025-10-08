@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 
 from laser_cross_calibration.constants import VSMALL
 from laser_cross_calibration.tracing.intersection import ray_intersection
-from laser_cross_calibration.tracing.optical_system import OpticalSystem
-from laser_cross_calibration.tracing.ray import OpticalRay
-from laser_cross_calibration.types import POINT3
 
 if TYPE_CHECKING:
     from laser_cross_calibration.sources.base import LaserSource
+    from laser_cross_calibration.tracing.optical_system import OpticalSystem
+    from laser_cross_calibration.tracing.ray import OpticalRay
+    from laser_cross_calibration.types import POINT3
 
 
 class RayTracer:

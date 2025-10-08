@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import TYPE_CHECKING
 
-from laser_cross_calibration.materials.base import BaseMaterial
+if TYPE_CHECKING:
+    from laser_cross_calibration.materials.base import BaseMaterial
 
 
 class MaterialRegistry:
@@ -16,11 +17,11 @@ class MaterialRegistry:
     """
 
     def __init__(self):
-        self._materials: Dict[str, BaseMaterial] = {}
-        self._aliases: Dict[str, str] = {}
+        self._materials: dict[str, BaseMaterial] = {}
+        self._aliases: dict[str, str] = {}
 
     def register(
-        self, material: BaseMaterial, aliases: Optional[list[str]] = None
+        self, material: BaseMaterial, aliases: list[str] | None = None
     ) -> None:
         """
         Register a material in the global registry.
@@ -35,7 +36,7 @@ class MaterialRegistry:
             for alias in aliases:
                 self._aliases[alias] = material.name
 
-    def get(self, name: str) -> Optional[BaseMaterial]:
+    def get(self, name: str) -> BaseMaterial | None:
         """
         Get material by name or alias.
 
@@ -72,10 +73,10 @@ class MaterialRegistry:
             raise ValueError(f"Material '{name}' not found. Available: {available}")
         return material
 
-    def list_materials(self) -> Dict[str, BaseMaterial]:
+    def list_materials(self) -> dict[str, BaseMaterial]:
         """Get all registered materials."""
         return self._materials.copy()
 
-    def list_aliases(self) -> Dict[str, str]:
+    def list_aliases(self) -> dict[str, str]:
         """Get all registered aliases."""
         return self._aliases.copy()

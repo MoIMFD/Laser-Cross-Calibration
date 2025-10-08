@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
 
-
 if TYPE_CHECKING:
     from laser_cross_calibration.tracing.ray import OpticalRay
     from laser_cross_calibration.types import POINT3, VECTOR3
@@ -33,7 +32,9 @@ class LaserSource(ABC):
 
     def to_plotly(self) -> list[go.Cone]:
         traces = []
-        for origin, direction in zip(self.get_origins(), self.get_directions()):
+        for origin, direction in zip(
+            self.get_origins(), self.get_directions(), strict=False
+        ):
             trace = go.Cone(
                 x=[origin[0]],
                 y=[origin[1]],

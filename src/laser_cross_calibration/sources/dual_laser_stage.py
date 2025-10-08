@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.graph_objects as go
 
 from laser_cross_calibration.sources.base import LaserSource
 from laser_cross_calibration.tracing.ray import OpticalRay
-from laser_cross_calibration.types import POINT3, VECTOR3
+
+if TYPE_CHECKING:
+    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class DualLaserStageSource(LaserSource):

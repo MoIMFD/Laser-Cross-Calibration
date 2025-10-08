@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+from laser_cross_calibration.constants import VSMALL, VVSMALL
 from laser_cross_calibration.surfaces.base import (
-    Surface,
     IntersectionResult,
+    Surface,
     get_surface_color,
 )
-from laser_cross_calibration.constants import VSMALL, VVSMALL
-from laser_cross_calibration.types import POINT3, VECTOR3
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
@@ -18,6 +17,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from laser_cross_calibration.tracing.ray import OpticalRay
+    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class TriSurface(Surface):
@@ -43,7 +43,8 @@ class TriSurface(Surface):
         Args:
             vertices: (N, 3) array of vertex coordinates
             faces: (M, 3) array of triangle vertex indices
-            smooth: Whether to use smooth normal interpolation (True) or flat triangle normals (False)
+            smooth: Whether to use smooth normal interpolation (True) or
+                flat triangle normals (False)
         """
         super().__init__(surface_id=surface_id, **kwargs)
 
@@ -151,7 +152,7 @@ class TriSurface(Surface):
         Tests ray against all triangles and returns closest hit.
         """
         result = IntersectionResult()
-        closest_distance = np.inf
+        # closest_distance = np.inf
 
         # Ray origin and direction
         ray_origin = ray.position
@@ -245,30 +246,6 @@ class TriSurface(Surface):
 
         return result
 
-    def get_normal_at_point(self, point: POINT3) -> VECTOR3:
-        """
-        Get surface normal at point.
-        Note: This is an approximation since we don't have barycentric coordinates.
-        For accurate normals, use the normal from intersection results.
-        """
-        # Find closest triangle center (approximation)
-        triangle_centers = np.mean(self.vertices[self.faces], axis=1)
-        distances = np.linalg.norm(triangle_centers - point, axis=1)
-        closest_triangle = np.argmin(distances)
-
-        if self.smooth and self.vertex_normals is not None:
-            # For smooth surfaces, return interpolated normal at triangle center
-            face = self.faces[closest_triangle]
-            # Use equal weights (1/3 each) for triangle center
-            normal = (
-                self.vertex_normals[face[0]]
-                + self.vertex_normals[face[1]]
-                + self.vertex_normals[face[2]]
-            ) / 3.0
-            return normalize(normal)
-        else:
-            return self.triangle_normals[closest_triangle]
-
     def to_plotly_surface(
         self, show_normals: bool = False
     ) -> list[go.Mesh3d] | list[go.Mesh3d | go.Scatter3d]:
@@ -300,7 +277,7 @@ class TriSurface(Surface):
         normals = self.triangle_normals[sample_indices] * 0.1  # Scale for visibility
 
         normal_traces: list[go.Scatter3d] = []
-        for i, (center, normal) in enumerate(zip(centers, normals, strict=False)):
+        for _, (center, normal) in enumerate(zip(centers, normals, strict=False)):
             end_point = center + normal
             normal_traces.append(
                 go.Scatter3d(
@@ -375,7 +352,8 @@ class StlSurface(TriSurface):
 
         Args:
             triangle_vectors: (N, 3, 3) array where each triangle is 3 vertices
-            smooth: If True, deduplicate vertices for smooth shading. If False, keep separate vertices.
+            smooth: If True, deduplicate vertices for smooth shading. If False,
+                keep separate vertices.
 
         Returns:
             Tuple of (vertices, faces) arrays

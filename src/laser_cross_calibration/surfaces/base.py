@@ -4,16 +4,15 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
-
-from laser_cross_calibration.types import POINT3, VECTOR3
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
     from laser_cross_calibration.tracing.ray import OpticalRay
+    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 def get_surface_color(surface_id: int) -> str:
@@ -144,19 +143,6 @@ class Surface(ABC):
         """
         pass
 
-    @abstractmethod
-    def get_normal_at_point(self, point: POINT3) -> VECTOR3:
-        """
-        Calculate surface normal at given point.
-
-        Args:
-            point: Point on the surface
-
-        Returns:
-            Normalized surface normal vector
-        """
-        pass
-
     def get_bounds(self) -> tuple[POINT3, POINT3] | None:
         """
         Get axis-aligned bounding box for this surface.
@@ -168,8 +154,8 @@ class Surface(ABC):
 
     @abstractmethod
     def to_plotly_surface(
-        self, bounds: Optional[tuple] = None, show_normals: bool = False
-    ) -> "go.Surface | list[go.Scatter3d]":
+        self, bounds: tuple | None = None, show_normals: bool = False
+    ) -> go.Surface | list[go.Scatter3d]:
         """
         Convert surface to Plotly visualization objects.
 
