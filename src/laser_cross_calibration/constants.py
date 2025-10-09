@@ -7,9 +7,9 @@ import numpy as np
 if TYPE_CHECKING:
     from laser_cross_calibration.types import POINT3, VECTOR3
 
-VSMALL = 1e-8
-VVSMALL = 1e-12  # For preventing division by zero
-INTERSECTION_THRESHOLD = 1e-4
+VSMALL: float = 1e-8
+VVSMALL: float = 1e-12  # For preventing division by zero
+INTERSECTION_THRESHOLD: float = 1e-4
 
 NAN_POINT3: POINT3 = np.array((np.nan, np.nan, np.nan))
 ORIGIN_POINT3: POINT3 = np.zeros(3)

@@ -148,6 +148,22 @@ def triangle_box_surface() -> surfaces.TriSurface:
     return surfaces.TriSurface(vertices=vertices, faces=faces)
 
 
+@pytest.fixture
+def single_laser_source_x() -> sources.SingleLaserSource:
+    return sources.SingleLaserSource(origin=ORIGIN_POINT3, direction=UNIT_X_VECTOR3)
+
+
+@pytest.fixture
+def dual_laser_stage_source_xy() -> sources.DualLaserStageSource:
+    return sources.DualLaserStageSource(
+        origin=ORIGIN_POINT3,
+        arm1=UNIT_X_VECTOR3,
+        arm2=UNIT_Y_VECTOR3,
+        direction1=UNIT_Y_VECTOR3,
+        direction2=UNIT_X_VECTOR3,
+    )
+
+
 @pytest.fixture(scope="session")
 def stl_cube(tmp_path_factory):
     """Generate a STL file for a cube with edge length 2."""
@@ -967,19 +983,3 @@ endsolid icosphere
     stl_file_path = tmp_path / "ico_sphere.stl"
     stl_file_path.write_text(stl_content)
     return stl_file_path
-
-
-@pytest.fixture
-def single_laser_source_x():
-    return sources.SingleLaserSource(origin=ORIGIN_POINT3, direction=UNIT_X_VECTOR3)
-
-
-@pytest.fixture
-def dual_laser_stage_source_xy():
-    return sources.DualLaserStageSource(
-        origin=ORIGIN_POINT3,
-        arm1=UNIT_X_VECTOR3,
-        arm2=UNIT_Y_VECTOR3,
-        direction1=UNIT_Y_VECTOR3,
-        direction2=UNIT_X_VECTOR3,
-    )

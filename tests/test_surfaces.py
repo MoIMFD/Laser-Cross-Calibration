@@ -19,7 +19,7 @@ from laser_cross_calibration.surfaces import (
     TriSurface,
 )
 from laser_cross_calibration.tracing.ray import OpticalRay
-from laser_cross_calibration.types import POINT3, VECTOR3
+from tests.utils import assert_vectors_close
 
 
 @pytest.mark.unit
@@ -71,13 +71,13 @@ class TestTriangleSurface:
     ):
         # check horizontal tri element with vertical normal
         normal = single_triangle_surface_xy.triangle_normals[0]
-        assert np.allclose(normal, (0, 0, 1))
-        assert np.isclose(np.linalg.norm(normal), 1.0)
+        assert_vectors_close(normal, (0, 0, 1))
+        assert isclose(np.linalg.norm(normal), 1.0)
 
         # check vertical tri element with horizontal normal
         normal = single_triangle_surface_yz.triangle_normals[0]
-        assert np.allclose(normal, (1, 0, 0))
-        assert np.isclose(np.linalg.norm(normal), 1.0)
+        assert_vectors_close(normal, (1, 0, 0))
+        assert isclose(np.linalg.norm(normal), 1.0)
 
     def test_degenerate_triangle_handling(self):
         """Degenerate triangle (all same point) shouldn't crash, but normal will be
@@ -105,17 +105,17 @@ class TestTriangleSurface:
 
         normal_right = tri_surface.triangle_normals[0]
         # (v1-v0) = (1,0,0), (v2-v0) = (0,1,0), cross = (0,0,1)
-        assert np.allclose(normal_right, (0, 0, 1))
+        assert_vectors_close(normal_right, (0, 0, 1))
 
         faces = np.array([[2, 1, 0]])
         tri_surface = TriSurface(vertices=vertices, faces=faces)
 
         normal_left = tri_surface.triangle_normals[0]
         # (v1-v0) = (1,0,0), (v2-v0) = (0,1,0), cross = (0,0,1)
-        assert np.allclose(normal_left, (0, 0, -1))
+        assert_vectors_close(normal_left, (0, 0, -1))
 
         # check if normals are opposed
-        assert np.allclose(normal_right, -normal_left)
+        assert_vectors_close(normal_right, -normal_left)
 
     def test_mesh_validation_invalid_shape(self):
         """Invalid vertex/face shapes should raise ValueError."""
@@ -146,8 +146,8 @@ class TestTriangleSurface:
 
         surface.scale(x=2.0, z=0.5)
 
-        assert np.allclose(surface.vertices[:, 0], original_vertices[:, 0] * 2.0)
-        assert np.allclose(surface.vertices[:, 2], original_vertices[:, 2] * 0.5)
+        assert_vectors_close(surface.vertices[:, 0], original_vertices[:, 0] * 2.0)
+        assert_vectors_close(surface.vertices[:, 2], original_vertices[:, 2] * 0.5)
 
     def test_translate_transformation(self, single_triangle_surface_yz: TriSurface):
         """Test translation modifies vertices correctly."""
@@ -157,7 +157,7 @@ class TestTriangleSurface:
         surface.translate(x=1.0, y=2.0, z=3.0)
 
         expected = original_vertices + np.array([1.0, 2.0, 3.0])
-        assert np.allclose(surface.vertices, expected)
+        assert_vectors_close(surface.vertices, expected)
 
     def test_transformation_chaining(self):
         """Test that transformations can be chained."""
@@ -166,8 +166,8 @@ class TestTriangleSurface:
 
         surface.scale(x=2.0).translate(z=5.0)
 
-        assert np.allclose(surface.vertices[0], [0, 0, 5])
-        assert np.allclose(surface.vertices[1], [2, 0, 5])
+        assert_vectors_close(surface.vertices[0], [0, 0, 5])
+        assert_vectors_close(surface.vertices[1], [2, 0, 5])
 
     def test_bounding_box(self):
         """Test bounding box calculation."""
@@ -182,8 +182,8 @@ class TestTriangleSurface:
 
         min_bounds, max_bounds = surface.get_bounds()
 
-        assert np.allclose(min_bounds, [-1, 0, 0])
-        assert np.allclose(max_bounds, [2, 3, 5])
+        assert_vectors_close(min_bounds, [-1, 0, 0])
+        assert_vectors_close(max_bounds, [2, 3, 5])
 
     def test_smooth_vs_flat_shading(self):
         """Verify smooth=True creates vertex normals, smooth=False doesn't."""
@@ -207,7 +207,7 @@ class TestTriangleSurface:
         assert smooth_surface.vertex_normals.shape == (3, 3)  # 3 vertices, 3D normals
         # For single triangle, all vertex normals should equal triangle normal
         for vertex_normal in smooth_surface.vertex_normals:
-            assert np.allclose(vertex_normal, smooth_surface.triangle_normals[0])
+            assert_vectors_close(vertex_normal, smooth_surface.triangle_normals[0])
 
     def test_vertex_normals_shared_vertices(self):
         """Vertex normals should average adjacent triangle normals."""
@@ -265,10 +265,10 @@ class TestTriangleRayInteraction:
             assert intersection.hit is True
 
             assert isinstance(intersection.point, np.ndarray)
-            assert np.allclose(intersection.point, (i * x_offset, 0, 0))
+            assert_vectors_close(intersection.point, (i * x_offset, 0, 0))
 
             assert isinstance(intersection.normal, np.ndarray)
-            assert np.allclose(intersection.normal, (1, 0, 0))
+            assert_vectors_close(intersection.normal, (1, 0, 0))
 
             assert isinstance(intersection.triangle_id, int)
             assert intersection.triangle_id == 0
@@ -295,10 +295,10 @@ class TestTriangleRayInteraction:
             assert intersection.hit is True
 
             assert isinstance(intersection.point, np.ndarray)
-            assert np.allclose(intersection.point, (0, i * y_offset, 0))
+            assert_vectors_close(intersection.point, (0, i * y_offset, 0))
 
             assert isinstance(intersection.normal, np.ndarray)
-            assert np.allclose(intersection.normal, (0, 1, 0))
+            assert_vectors_close(intersection.normal, (0, 1, 0))
 
             assert isinstance(intersection.triangle_id, int)
             assert intersection.triangle_id == 0
@@ -325,10 +325,10 @@ class TestTriangleRayInteraction:
             assert intersection.hit is True
 
             assert isinstance(intersection.point, np.ndarray)
-            assert np.allclose(intersection.point, (0, 0, i * z_offset))
+            assert_vectors_close(intersection.point, (0, 0, i * z_offset))
 
             assert isinstance(intersection.normal, np.ndarray)
-            assert np.allclose(intersection.normal, (0, 0, 1))
+            assert_vectors_close(intersection.normal, (0, 0, 1))
 
             assert isinstance(intersection.triangle_id, int)
             assert intersection.triangle_id == 0
@@ -352,8 +352,8 @@ class TestTriSurfaceStlHandling:
         assert isinstance(surface, Surface | TriSurface)
 
         bounds = surface.get_bounds()
-        assert np.allclose(bounds[0], (-1, -1, -1))
-        assert np.allclose(bounds[1], (1, 1, 1))
+        assert_vectors_close(bounds[0], (-1, -1, -1))
+        assert_vectors_close(bounds[1], (1, 1, 1))
 
         assert len(surface.faces) == 12
 
@@ -383,8 +383,8 @@ class TestTriSurfaceStlHandling:
         assert isinstance(surface, Surface | TriSurface)
 
         bounds = surface.get_bounds()
-        assert np.allclose(bounds[0], (-1, -1, -1))
-        assert np.allclose(bounds[1], (1, 1, 1))
+        assert_vectors_close(bounds[0], (-1.0, -1.0, -1.0))
+        assert_vectors_close(bounds[1], (1.0, 1.0, 1.0))
 
         # test the ico sphere
         surface = TriSurface.from_stl_file(stl_path=stl_ico_sphere)

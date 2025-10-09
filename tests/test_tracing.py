@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import numpy as np
@@ -10,6 +12,7 @@ from laser_cross_calibration.constants import (
 )
 from laser_cross_calibration.tracing import OpticalRay
 from laser_cross_calibration.utils import normalize
+from tests.utils import assert_allclose_list_of_vectors, assert_vectors_close
 
 
 @pytest.mark.unit
@@ -17,13 +20,13 @@ class TestOpticalRay:
     def test_creation(self):
         """Test basic ray creation with valid inputs."""
         ray = OpticalRay(origin=ORIGIN_POINT3, direction=UNIT_X_VECTOR3)
-        assert np.allclose(ray.origin, np.zeros(3))
-        assert np.allclose(ray.direction, np.array((1, 0, 0)))
+        assert_vectors_close(ray.origin, np.zeros(3))
+        assert_vectors_close(ray.direction, np.array((1, 0, 0)))
 
     def test_direction_is_normalized(self):
         """Test that direction vector is automatically normalized."""
         ray = OpticalRay(origin=ORIGIN_POINT3, direction=np.array([3.0, 4.0, 0.0]))
-        assert np.allclose(ray.direction, np.array([0.6, 0.8, 0.0]))
+        assert_vectors_close(ray.direction, np.array([0.6, 0.8, 0.0]))
         assert np.isclose(np.linalg.norm(ray.direction), 1.0)
 
     def test_initial_state(self):
@@ -32,8 +35,8 @@ class TestOpticalRay:
         direction = UNIT_Z_VECTOR3
         ray = OpticalRay(origin=origin, direction=direction)
 
-        assert np.allclose(ray.position, origin)
-        assert np.allclose(ray.current_direction, direction)
+        assert_vectors_close(ray.position, origin)
+        assert_vectors_close(ray.current_direction, direction)
         assert ray.is_alive is True
         assert len(ray.path_positions) == 1
         assert len(ray.path_directions) == 1
@@ -59,7 +62,7 @@ class TestOpticalRay:
         ray = OpticalRay(origin=ORIGIN_POINT3, direction=UNIT_X_VECTOR3)
         ray.propagate(distance=10.0, medium=air)
 
-        assert np.allclose(ray.position, np.array([10.0, 0.0, 0.0]))
+        assert_vectors_close(ray.position, np.array([10.0, 0.0, 0.0]))
         assert len(ray.path_positions) == 2
         assert len(ray.segment_distances) == 1
         assert ray.segment_distances[0] == 10.0
@@ -71,7 +74,7 @@ class TestOpticalRay:
         ray.propagate(distance=5.0, medium=air)
         ray.propagate(distance=3.0, medium=water)
 
-        assert np.allclose(ray.position, np.array([0.0, 0.0, 8.0]))
+        assert_vectors_close(ray.position, np.array([0.0, 0.0, 8.0]))
         assert len(ray.segment_distances) == 2
         assert ray.segment_distances == [5.0, 3.0]
         assert len(ray.media_history) == 2
@@ -176,3 +179,109 @@ class TestOpticalRay:
 
         theta_after = math.acos(abs(surface_normal.dot(ray.current_direction)))
         assert theta_after > theta_before
+
+    def test_copy(self, air, water):
+        original_ray = OpticalRay.ray_x()
+        original_ray.propagate(5, air)
+
+        copied_ray = original_ray.copy()
+
+        # verify its a copy (different object)
+        assert original_ray is not copied_ray
+
+        # verify attributes
+        assert_vectors_close(original_ray.origin, copied_ray.origin)
+        assert_vectors_close(original_ray.direction, copied_ray.direction)
+        assert_vectors_close(original_ray.position, copied_ray.position)
+        assert_vectors_close(
+            original_ray.current_direction, copied_ray.current_direction
+        )
+        assert_vectors_close(original_ray.is_alive, copied_ray.is_alive)
+        assert_allclose_list_of_vectors(
+            original_ray.path_positions, copied_ray.path_positions
+        )
+        assert_allclose_list_of_vectors(
+            original_ray.path_directions, copied_ray.path_directions
+        )
+        assert all(
+            mat1.name == mat2.name and math.isclose(mat1.n(), mat2.n())
+            for mat1, mat2 in zip(original_ray.media_history, copied_ray.media_history)
+        )
+        assert_allclose_list_of_vectors(
+            original_ray.segment_distances, copied_ray.segment_distances
+        )
+
+        # verify independence
+
+        original_ray.propagate(distance=1.0, medium=air)
+        copied_ray.current_direction = UNIT_Z_VECTOR3
+        copied_ray.propagate(distance=1.0, medium=water)
+
+        assert not np.allclose(
+            original_ray.current_direction, copied_ray.current_direction
+        )
+
+        assert not all(
+            mat1.name == mat2.name and math.isclose(mat1.n(), mat2.n())
+            for mat1, mat2 in zip(original_ray.media_history, copied_ray.media_history)
+        )
+
+        original_ray.propagate(distance=1.0, medium=air)
+        assert len(original_ray.media_history) != len(copied_ray.media_history)
+
+    def test_copy_fresh_ray(self):
+        """Test copying a ray that hasn't been propagated."""
+        original_ray = OpticalRay.ray_x()
+        copied_ray = original_ray.copy()
+
+        assert original_ray is not copied_ray
+        assert_vectors_close(original_ray.origin, copied_ray.origin)
+        assert len(copied_ray.media_history) == 0
+        assert len(copied_ray.path_positions) == 1  # only origin
+
+    def test_copy_independence_of_nested_structures(self, air):
+        """Verify modifying nested structures doesn't affect the original."""
+        original_ray = OpticalRay.ray_x()
+        original_ray.propagate(5, air)
+
+        copied_ray = original_ray.copy()
+
+        # Modify nested list items
+        if len(copied_ray.path_positions) > 0:
+            copied_ray.path_positions[0] = np.array([999, 999, 999])
+
+        assert not np.allclose(
+            original_ray.path_positions[0], copied_ray.path_positions[0]
+        )
+
+    def test_rotation_x(self):
+        ray = OpticalRay.ray_x()
+
+        # rotation around ray axis, no change in orientation
+        ray.rotate(rx=np.pi / 2)
+        assert_vectors_close(ray.current_direction, UNIT_X_VECTOR3)
+
+        ray.rotate(ry=np.pi / 2)
+        assert_vectors_close(ray.current_direction, -UNIT_Z_VECTOR3)
+
+        ray.rotate(ry=np.pi / 2)
+        assert_vectors_close(ray.current_direction, -UNIT_X_VECTOR3)
+
+        ray.rotate(ry=np.pi)
+        assert_vectors_close(ray.current_direction, UNIT_X_VECTOR3)
+
+    def test_rotation_y(self):
+        ray = OpticalRay.ray_x()
+
+        # rotation around ray axis, no change in orientation
+        ray.rotate(rx=np.pi / 2)
+        assert_vectors_close(ray.current_direction, UNIT_X_VECTOR3)
+
+        ray.rotate(ry=np.pi / 2)
+        assert_vectors_close(ray.current_direction, -UNIT_Z_VECTOR3)
+
+        ray.rotate(ry=np.pi / 2)
+        assert_vectors_close(ray.current_direction, -UNIT_X_VECTOR3)
+
+        ray.rotate(ry=np.pi)
+        assert_vectors_close(ray.current_direction, UNIT_X_VECTOR3)
