@@ -21,6 +21,7 @@ dev = [
     "jupyter>=1.1.1",
     "pytest>=8.4.1",
     "pytest-cov>=7.0.0",
+    "pytest-watcher>=0.4.3",
 ]
 
 [tool.ruff]
