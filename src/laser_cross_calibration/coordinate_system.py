@@ -19,13 +19,13 @@ class CoordinateSystem:
         rz: float = 0.0,
         parent_cs: Self | None = None,
     ):
-        self.x = x
-        self.y = y
-        self.z = z
+        self.x = float(x)
+        self.y = float(y)
+        self.z = float(z)
 
-        self.rx = rx
-        self.ry = ry
-        self.rz = rz
+        self.rx = float(rx)
+        self.ry = float(ry)
+        self.rz = float(rz)
 
         self.parent_cs = parent_cs
 

@@ -8,13 +8,17 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from laser_cross_calibration.constants import (
+    NAN_POINT3,
+    NAN_VECTOR3,
+)
+from laser_cross_calibration.coordinate_system import CoordinateSystem
+
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
     from laser_cross_calibration.tracing.ray import OpticalRay
     from laser_cross_calibration.types import POINT3, VECTOR3
-
-from laser_cross_calibration.constants import NAN_POINT3, NAN_VECTOR3
 
 
 def get_surface_color(surface_id: int) -> str:
@@ -105,7 +109,12 @@ class Surface(ABC):
 
     _id_counter: int = 0
 
-    def __init__(self, surface_id: int | None = None, info: str = "unknown") -> None:
+    def __init__(
+        self,
+        surface_id: int | None = None,
+        info: str = "unknown",
+        coordinate_system: CoordinateSystem | None = None,
+    ) -> None:
         """
         Initialize surface with identification.
 
