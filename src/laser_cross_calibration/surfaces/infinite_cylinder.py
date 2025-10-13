@@ -38,7 +38,7 @@ class InfiniteCylinder(Surface):
         result = IntersectionResult()
 
         # Vector from cylinder center to ray origin
-        oc = ray.position - self.center
+        oc = ray.current_position - self.center
 
         # Project ray direction and oc onto plane perpendicular to cylinder axis
         d_perp = (
@@ -73,7 +73,7 @@ class InfiniteCylinder(Surface):
 
         result.hit = True
         result.distance = t
-        result.point = ray.position + t * ray.current_direction
+        result.point = ray.current_position + t * ray.current_direction
 
         # Normal is perpendicular to axis
         point_to_axis = result.point - self.center

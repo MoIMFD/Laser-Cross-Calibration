@@ -8,6 +8,7 @@ import pytest
 from laser_cross_calibration.constants import (
     ORIGIN_POINT3,
     UNIT_X_VECTOR3,
+    UNIT_Y_VECTOR3,
     UNIT_Z_VECTOR3,
 )
 from laser_cross_calibration.tracing import OpticalRay
@@ -21,13 +22,13 @@ class TestOpticalRay:
         """Test basic ray creation with valid inputs."""
         ray = OpticalRay(origin=ORIGIN_POINT3, direction=UNIT_X_VECTOR3)
         assert_vectors_close(ray.origin, np.zeros(3))
-        assert_vectors_close(ray.direction, np.array((1, 0, 0)))
+        assert_vectors_close(ray.initial_direction, np.array((1, 0, 0)))
 
     def test_direction_is_normalized(self):
         """Test that direction vector is automatically normalized."""
         ray = OpticalRay(origin=ORIGIN_POINT3, direction=np.array([3.0, 4.0, 0.0]))
-        assert_vectors_close(ray.direction, np.array([0.6, 0.8, 0.0]))
-        assert np.isclose(np.linalg.norm(ray.direction), 1.0)
+        assert_vectors_close(ray.initial_direction, np.array([0.6, 0.8, 0.0]))
+        assert np.isclose(np.linalg.norm(ray.initial_direction), 1.0)
 
     def test_initial_state(self):
         """Test that initial state is correctly set."""
@@ -35,7 +36,7 @@ class TestOpticalRay:
         direction = UNIT_Z_VECTOR3
         ray = OpticalRay(origin=origin, direction=direction)
 
-        assert_vectors_close(ray.position, origin)
+        assert_vectors_close(ray.current_position, origin)
         assert_vectors_close(ray.current_direction, direction)
         assert ray.is_alive is True
         assert len(ray.path_positions) == 1
@@ -62,7 +63,7 @@ class TestOpticalRay:
         ray = OpticalRay(origin=ORIGIN_POINT3, direction=UNIT_X_VECTOR3)
         ray.propagate(distance=10.0, medium=air)
 
-        assert_vectors_close(ray.position, np.array([10.0, 0.0, 0.0]))
+        assert_vectors_close(ray.current_position, np.array([10.0, 0.0, 0.0]))
         assert len(ray.path_positions) == 2
         assert len(ray.segment_distances) == 1
         assert ray.segment_distances[0] == 10.0
@@ -74,7 +75,7 @@ class TestOpticalRay:
         ray.propagate(distance=5.0, medium=air)
         ray.propagate(distance=3.0, medium=water)
 
-        assert_vectors_close(ray.position, np.array([0.0, 0.0, 8.0]))
+        assert_vectors_close(ray.current_position, np.array([0.0, 0.0, 8.0]))
         assert len(ray.segment_distances) == 2
         assert ray.segment_distances == [5.0, 3.0]
         assert len(ray.media_history) == 2
@@ -191,8 +192,10 @@ class TestOpticalRay:
 
         # verify attributes
         assert_vectors_close(original_ray.origin, copied_ray.origin)
-        assert_vectors_close(original_ray.direction, copied_ray.direction)
-        assert_vectors_close(original_ray.position, copied_ray.position)
+        assert_vectors_close(
+            original_ray.initial_direction, copied_ray.initial_direction
+        )
+        assert_vectors_close(original_ray.current_position, copied_ray.current_position)
         assert_vectors_close(
             original_ray.current_direction, copied_ray.current_direction
         )
@@ -271,17 +274,98 @@ class TestOpticalRay:
         assert_vectors_close(ray.current_direction, UNIT_X_VECTOR3)
 
     def test_rotation_y(self):
-        ray = OpticalRay.ray_x()
+        ray = OpticalRay.ray_y()
 
         # rotation around ray axis, no change in orientation
-        ray.rotate(rx=np.pi / 2)
-        assert_vectors_close(ray.current_direction, UNIT_X_VECTOR3)
-
         ray.rotate(ry=np.pi / 2)
+        assert_vectors_close(ray.current_direction, UNIT_Y_VECTOR3)
+
+        ray.rotate(rx=np.pi / 2)
+        assert_vectors_close(ray.current_direction, UNIT_Z_VECTOR3)
+
+        ray.rotate(rx=np.pi / 2)
+        assert_vectors_close(ray.current_direction, -UNIT_Y_VECTOR3)
+
+        ray.rotate(rx=np.pi)
+        assert_vectors_close(ray.current_direction, UNIT_Y_VECTOR3)
+
+    def test_rotation_z(self):
+        ray = OpticalRay.ray_z()
+
+        # rotation around ray axis, no change in orientation
+        ray.rotate(rz=np.pi / 2)
+        assert_vectors_close(ray.current_direction, UNIT_Z_VECTOR3)
+
+        ray.rotate(rx=np.pi / 2)
+        assert_vectors_close(ray.current_direction, -UNIT_Y_VECTOR3)
+
+        ray.rotate(rx=np.pi / 2)
         assert_vectors_close(ray.current_direction, -UNIT_Z_VECTOR3)
 
-        ray.rotate(ry=np.pi / 2)
-        assert_vectors_close(ray.current_direction, -UNIT_X_VECTOR3)
+        ray.rotate(rx=np.pi)
+        assert_vectors_close(ray.current_direction, UNIT_Z_VECTOR3)
 
-        ray.rotate(ry=np.pi)
-        assert_vectors_close(ray.current_direction, UNIT_X_VECTOR3)
+        assert_vectors_close(ray.origin, ORIGIN_POINT3)
+
+    def test_rotation_chaining(self):
+        """Test chaining of rotation operations."""
+        ray = OpticalRay.ray_x()
+
+        assert_vectors_close(ray.initial_direction, UNIT_X_VECTOR3)
+
+        # some composed rotation
+        ray.rotate(rx=-np.pi).rotate(rz=np.pi / 2).rotate(ry=np.pi)
+        assert_vectors_close(ray.initial_direction, UNIT_Y_VECTOR3)
+        # composed inverse rotation
+        ray.rotate(ry=-np.pi).rotate(rz=-np.pi / 2).rotate(rx=np.pi)
+        assert_vectors_close(ray.initial_direction, UNIT_X_VECTOR3)
+
+    def test_non_origin_rotation(self):
+        """Test rotation for rays with origin different than (0, 0, 0)."""
+        ray = OpticalRay.ray_x(origin=UNIT_X_VECTOR3)
+        assert_vectors_close(ray.origin, UNIT_X_VECTOR3)
+        assert_vectors_close(ray.initial_direction, UNIT_X_VECTOR3)
+
+        ray.rotate(ry=np.pi / 2)
+        assert_vectors_close(ray.origin, -UNIT_Z_VECTOR3)
+        assert_vectors_close(ray.initial_direction, -UNIT_Z_VECTOR3)
+
+        ray = OpticalRay.ray_z(origin=2 * UNIT_Y_VECTOR3 + 3 * UNIT_X_VECTOR3)
+        assert_vectors_close(ray.origin, [3, 2, 0])
+        assert_vectors_close(ray.initial_direction, UNIT_Z_VECTOR3)
+
+        ray.rotate(rz=3 * np.pi / 2)
+        assert_vectors_close(ray.origin, [2, -3, 0])
+        assert_vectors_close(ray.initial_direction, UNIT_Z_VECTOR3)
+
+    def test_translation(self):
+        """Test translation operation of a ray."""
+        ray = OpticalRay.ray_x()
+        assert_allclose_list_of_vectors(ray.origin, ORIGIN_POINT3)
+
+        # test empty operation
+        ray.translate()
+        assert_allclose_list_of_vectors(ray.origin, ORIGIN_POINT3)
+
+        ray.translate(x=5)
+        assert_vectors_close(ray.origin, 5 * UNIT_X_VECTOR3)
+
+        ray.translate(x=-5)
+        assert_vectors_close(ray.origin, ORIGIN_POINT3)
+
+        ray.translate(y=3, z=2)
+        assert_vectors_close(ray.origin, 3 * UNIT_Y_VECTOR3 + 2 * UNIT_Z_VECTOR3)
+
+        ray.translate(x=-10)
+        assert_vectors_close(
+            ray.origin, 3 * UNIT_Y_VECTOR3 + 2 * UNIT_Z_VECTOR3 - 10 * UNIT_X_VECTOR3
+        )
+
+    def test_translation_chaining(self):
+        """Test chaining of translation operations."""
+        ray = OpticalRay.ray_x()
+        ray.translate(x=10).translate(y=-3).translate(z=-2)
+
+        assert_vectors_close(
+            ray.origin, 10 * UNIT_X_VECTOR3 - 3 * UNIT_Y_VECTOR3 - 2 * UNIT_Z_VECTOR3
+        )

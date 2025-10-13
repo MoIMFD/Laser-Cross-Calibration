@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
-from laser_cross_calibration.constants import INTERSECTION_THRESHOLD, VSMALL
+from laser_cross_calibration.constants import (
+    INTERSECTION_THRESHOLD,
+    ORIGIN_POINT3,
+    VSMALL,
+)
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
@@ -44,9 +50,9 @@ class OpticalRay:
         Raises:
             ValueError: If direction vector is zero or origin/direction have wrong shape
         """
-        # Validate and convert inputs
-        origin_array = np.asarray(origin, dtype=np.float64)
-        direction_array = np.asarray(direction, dtype=np.float64)
+        # Validate and convert inputs, use np.array to create an independent copy
+        origin_array = np.array(origin, dtype=np.float64)
+        direction_array = np.array(direction, dtype=np.float64)
 
         if origin_array.shape != (3,):
             raise ValueError(f"Origin must be 3D point, got shape {origin_array.shape}")
@@ -61,16 +67,16 @@ class OpticalRay:
 
         # Store initial state
         self.origin: POINT3 = origin_array
-        self.direction: VECTOR3 = normalize(direction_array)
+        self.initial_direction: VECTOR3 = normalize(direction_array)
 
         # Current state
-        self.position: POINT3 = self.origin.copy()
-        self.current_direction: VECTOR3 = self.direction.copy()
+        self.current_position: POINT3 = self.origin.copy()
+        self.current_direction: VECTOR3 = self.initial_direction.copy()
         self.is_alive: bool = True
 
         # Path history - starts with initial state
         self.path_positions: list[POINT3] = [self.origin.copy()]
-        self.path_directions: list[VECTOR3] = [self.direction.copy()]
+        self.path_directions: list[VECTOR3] = [self.initial_direction.copy()]
         self.segment_distances: list[float] = []
         self.media_history: list[BaseMaterial] = []
 
@@ -86,10 +92,12 @@ class OpticalRay:
             return
 
         # Update position
-        self.position = self.position + distance * self.current_direction
+        self.current_position = (
+            self.current_position + distance * self.current_direction
+        )
 
         # Record path history
-        self.path_positions.append(self.position.copy())
+        self.path_positions.append(self.current_position.copy())
         self.path_directions.append(self.current_direction.copy())
         self.segment_distances.append(distance)
         self.media_history.append(medium)
@@ -155,31 +163,77 @@ class OpticalRay:
         Returns:
             Point at the specified distance along the ray
         """
-        return self.position + distance * self.current_direction
+        return self.current_position + distance * self.current_direction
 
     def __repr__(self) -> str:
         """String representation of the optical ray."""
         return (
             f"{self.__class__.__qualname__}("
-            f"position={self.position}, "
+            f"position={self.current_position}, "
             f"direction={self.current_direction}, "
             f"is_alive={self.is_alive})"
         )
 
+    def translate(self, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> OpticalRay:
+        """Translate the complete ray, including its history, used for coordinate
+        transformation.
+        """
+
+        translation = np.array([x, y, z])
+        self.origin += translation
+        self.current_position += translation
+        self.path_positions = [pos + translation for pos in self.path_positions]
+        return self
+
+    def rotate(self, rx: float = 0.0, ry: float = 0.0, rz: float = 0.0) -> OpticalRay:
+        """Rotate the complete ray, including its history, used for coordinate
+        transformation.
+        """
+        rotation = R.from_euler("xyz", [rx, ry, rz], degrees=False)
+
+        # rotate positions
+        self.origin = rotation.apply(self.origin)
+        self.current_position = rotation.apply(self.current_position)
+        self.path_positions = [rotation.apply(pos) for pos in self.path_positions]
+
+        # rotate directions
+        self.initial_direction = rotation.apply(self.initial_direction)
+        self.current_direction = rotation.apply(self.current_direction)
+        self.path_directions = [rotation.apply(dir) for dir in self.path_directions]
+        return self
+
+    def copy(self) -> OpticalRay:
+        """Create a new OpticalRay instance as an independent copy of the current one."""
+        copied_ray = OpticalRay.ray_x()
+        copied_ray.origin = self.origin.copy()
+        copied_ray.initial_direction = self.initial_direction.copy()
+        copied_ray.current_position = self.current_position.copy()
+        copied_ray.current_direction = self.current_direction.copy()
+        copied_ray.is_alive = self.is_alive
+        copied_ray.media_history = deepcopy(self.media_history)
+        copied_ray.path_positions = deepcopy(self.path_positions)
+        copied_ray.path_directions = deepcopy(self.path_directions)
+        copied_ray.segment_distances = deepcopy(self.segment_distances)
+
+        return copied_ray
+
     @classmethod
-    def ray_x(cls, origin=(0, 0, 0)) -> OpticalRay:
+    def ray_x(cls, origin=ORIGIN_POINT3) -> OpticalRay:
+        """Create a ray facing towards positive x axis."""
         direction = np.zeros(3)
         direction[0] = 1.0
         return cls(origin=origin, direction=direction)
 
     @classmethod
-    def ray_y(cls, origin=(0, 0, 0)) -> OpticalRay:
+    def ray_y(cls, origin=ORIGIN_POINT3) -> OpticalRay:
+        """Create a ray facing towards positive y axis."""
         direction = np.zeros(3)
         direction[1] = 1.0
         return cls(origin=origin, direction=direction)
 
     @classmethod
-    def ray_z(cls, origin=(0, 0, 0)) -> OpticalRay:
+    def ray_z(cls, origin=ORIGIN_POINT3) -> OpticalRay:
+        """Create a ray facing towards positive z axis."""
         direction = np.zeros(3)
         direction[2] = 1.0
         return cls(origin=origin, direction=direction)

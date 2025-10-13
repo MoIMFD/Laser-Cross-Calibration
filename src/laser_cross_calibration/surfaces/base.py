@@ -123,6 +123,7 @@ class Surface(ABC):
             Surface._id_counter = max(Surface._id_counter, surface_id + 1)
         else:
             raise ValueError(f"Surface id must be type int, got <{type(surface_id)}>")
+        self.coordinate_system = coordinate_system or CoordinateSystem()
         self.info: str = info
 
     @classmethod
@@ -141,7 +142,6 @@ class Surface(ABC):
         Returns:
             Intersection result with hit information
         """
-        pass
 
     def get_bounds(self) -> tuple[POINT3, POINT3] | None:
         """
@@ -154,7 +154,7 @@ class Surface(ABC):
 
     @abstractmethod
     def to_plotly_surface(
-        self, bounds: tuple | None = None, show_normals: bool = False
+        self, show_normals: bool = False
     ) -> go.Surface | list[go.Scatter3d]:
         """
         Convert surface to Plotly visualization objects.
@@ -166,7 +166,6 @@ class Surface(ABC):
         Returns:
             Plotly Surface object, or list of traces if show_normals=True
         """
-        pass
 
     def __repr__(self) -> str:
         """String representation of the surface."""

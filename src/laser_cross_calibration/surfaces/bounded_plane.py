@@ -135,19 +135,21 @@ class RectangularPlane(Surface):
     def intersect(self, ray: OpticalRay) -> IntersectionResult:
         result = IntersectionResult()
 
+        local_ray = self.coordinate_system.localize(ray)
+
         # First check intersection with infinite plane
         denom = np.dot(ray.current_direction, self.normal)
 
         if abs(denom) < VSMALL:
             return result
 
-        t = np.dot(self.center - ray.position, self.normal) / denom
+        t = np.dot(self.center - ray.current_position, self.normal) / denom
 
         if t < VSMALL:
             return result
 
         # Calculate intersection point
-        intersection_point = ray.position + t * ray.current_direction
+        intersection_point = ray.current_position + t * ray.current_direction
 
         # Check if point is within rectangle bounds
         point_rel = intersection_point - self.center

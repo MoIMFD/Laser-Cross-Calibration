@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Self, TypedDict
 from laser_cross_calibration.tracing import OpticalRay
 
 if TYPE_CHECKING:
-    from laser_cross_calibration.tracing import OpticalRay
+    from laser_cross_calibration.types import POINT3
 
 
 class CoordinateSystem:
@@ -17,7 +17,7 @@ class CoordinateSystem:
         rx: float = 0.0,
         ry: float = 0.0,
         rz: float = 0.0,
-        parent_cs: CoordinateSystem | None = None,
+        parent_cs: Self | None = None,
     ):
         self.x = x
         self.y = y
@@ -29,23 +29,37 @@ class CoordinateSystem:
 
         self.parent_cs = parent_cs
 
-    def localize(self, rays):
+    def localize(self, ray: OpticalRay) -> OpticalRay:
+        """Transform a ray from world coordinates to the local coordinate system."""
         if self.parent_cs:
-            self.parent_cs.localize(rays)
+            local_ray = self.parent_cs.localize(ray)
+        else:
+            local_ray = ray.copy()
+        local_ray.translate(-self.x, -self.y, -self.z)
+        local_ray.rotate(self.rx, self.ry, self.rz)
 
-        rays.translate(-self.x, -self.y, -self.z)
-        if self.rz:
-            rays.rotate_z(-self.rz)
-        if self.ry:
-            rays.rotate_y(-self.ry)
-        if self.rx:
-            rays.rotate_x(-self.rx)
+        return local_ray
 
-    def globalize(self):
-        raise NotImplementedError()
+    def globalize(self, ray: OpticalRay) -> OpticalRay:
+        """Transform a ray from the local coordinate system to world coordinates."""
 
-    def position_in_global_cs(self):
-        raise NotImplementedError()
+        if self.parent_cs:
+            global_ray = self.parent_cs.globalize(ray)
+        else:
+            global_ray = ray.copy()
+        global_ray.translate(self.x, self.y, self.z)
+        global_ray.rotate(self.rx, self.ry, self.rz)
+        return global_ray
+
+    @property
+    def position_in_global_cs(self) -> POINT3:
+        """Position in global coordinate system.
+
+        Creates a local ray and utilizes the ray transformation methods.
+        """
+        local_ray = OpticalRay.ray_x()
+        global_ray = self.globalize(local_ray)
+        return global_ray.origin
 
     def get_rotation_matrix(self):
         raise NotImplementedError()

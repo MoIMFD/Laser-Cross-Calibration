@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from laser_cross_calibration.tracing.ray import OpticalRay
-    from laser_cross_calibration.types import POINT3, VECTOR3
+    from laser_cross_calibration.types import POINT3
 
 
 class TriSurface(Surface):
@@ -184,7 +184,7 @@ class TriSurface(Surface):
         # closest_distance = np.inf
 
         # Ray origin and direction
-        ray_origin = ray.position
+        ray_origin = ray.current_position
         ray_dir = ray.current_direction
 
         # Get triangle vertices

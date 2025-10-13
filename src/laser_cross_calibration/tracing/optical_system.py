@@ -106,7 +106,7 @@ class OpticalSystem:
 
             if intersection is not None:
                 if current_medium is None:
-                    ray_dir = normalize(ray.direction)
+                    ray_dir = normalize(ray.initial_direction)
                     dot_product = np.dot(ray_dir, intersection.normal)
 
                     if dot_product < 0:

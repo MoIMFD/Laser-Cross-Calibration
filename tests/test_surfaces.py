@@ -398,3 +398,47 @@ class TestTriSurfaceStlHandling:
     def test_load_stl_invalid_path(self):
         with pytest.raises(FileNotFoundError, match="No STL file*"):
             _ = TriSurface.from_stl_file(stl_path="some/invalid/path.stl")
+
+
+class TestPlaneSurface:
+    def test_plane_yz(self):
+        plane = Plane.create_yz()
+
+        assert_vectors_close(plane.normal, UNIT_X_VECTOR3)
+
+    def test_plane_ray_intersection(self):
+        ray = OpticalRay.ray_x(origin=-1 * UNIT_X_VECTOR3)
+        plane = Plane.create_yz()
+
+        result = plane.intersect(ray)
+
+        assert isinstance(result, IntersectionResult)
+        assert result.hit is True
+        assert isclose(result.distance, 1.0)
+        assert_vectors_close(result.point, ORIGIN_POINT3)
+        assert_vectors_close(result.normal, -UNIT_X_VECTOR3)
+        assert result.surface_id == plane.surface_id
+
+        ray = OpticalRay.ray_y(origin=-2 * UNIT_Y_VECTOR3)
+        plane = Plane.create_xz()
+
+        result = plane.intersect(ray)
+
+        assert isinstance(result, IntersectionResult)
+        assert result.hit is True
+        assert isclose(result.distance, 2.0)
+        assert_vectors_close(result.point, ORIGIN_POINT3)
+        assert_vectors_close(result.normal, -UNIT_Y_VECTOR3)
+        assert result.surface_id == plane.surface_id
+
+        ray = OpticalRay.ray_z(origin=-3.5 * UNIT_Z_VECTOR3)
+        plane = Plane.create_xy()
+
+        result = plane.intersect(ray)
+
+        assert isinstance(result, IntersectionResult)
+        assert result.hit is True
+        assert isclose(result.distance, 3.5)
+        assert_vectors_close(result.point, ORIGIN_POINT3)
+        assert_vectors_close(result.normal, -UNIT_Z_VECTOR3)
+        assert result.surface_id == plane.surface_id

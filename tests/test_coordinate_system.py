@@ -1,10 +1,20 @@
 from __future__ import annotations
 
-from math import isclose
+from math import isclose, pi as PI
 
 import pytest
 
 from laser_cross_calibration.coordinate_system import CoordinateSystem
+from laser_cross_calibration.materials.constant import ConstantMaterial
+from laser_cross_calibration.tracing import OpticalRay
+from laser_cross_calibration.constants import (
+    UNIT_X_VECTOR3,
+    UNIT_Y_VECTOR3,
+    UNIT_Z_VECTOR3,
+    ORIGIN_POINT3,
+)
+
+from tests.utils import assert_vectors_close
 
 
 @pytest.mark.unit
@@ -88,3 +98,82 @@ class TestCoordinateSystem:
         assert isclose(
             original_cs.parent_cs.parent_cs.x, rebuild_cs.parent_cs.parent_cs.x
         )
+
+
+@pytest.mark.integration
+class TestCoordinateSystemWithRay:
+    def test_localize_ray_translation(self, air: ConstantMaterial):
+        """Test localization of a global ray to a shifted coordinate system."""
+        global_ray = OpticalRay.ray_x()
+        cs = CoordinateSystem(x=5, y=10, z=-5)
+
+        local_ray = cs.localize(global_ray)
+        assert_vectors_close(local_ray.origin, (-5, -10, 5))
+        assert_vectors_close(local_ray.current_direction, UNIT_X_VECTOR3)
+
+        global_ray.propagate(10, air)
+        local_ray = cs.localize(global_ray)
+        assert_vectors_close(local_ray.origin, (-5, -10, 5))
+        assert_vectors_close(local_ray.current_direction, UNIT_X_VECTOR3)
+        assert_vectors_close(local_ray.current_position, (5, -10, 5))
+        assert local_ray.segment_distances[0] == global_ray.segment_distances[0]
+        assert local_ray.media_history[0].name == global_ray.media_history[0].name
+
+    def test_globalize_ray_translation(self, air: ConstantMaterial):
+        """Test globalization of a local ray from a shifted coordinate system."""
+
+        local_ray = OpticalRay.ray_y()
+        cs = CoordinateSystem(x=-5, y=-10, z=5)
+
+        global_ray = cs.globalize(local_ray)
+        assert_vectors_close(global_ray.origin, (-5, -10, 5))
+        assert_vectors_close(global_ray.current_direction, UNIT_Y_VECTOR3)
+
+        local_ray.propagate(10, air)
+        global_ray = cs.globalize(local_ray)
+        assert_vectors_close(global_ray.origin, (-5, -10, 5))
+        assert_vectors_close(global_ray.current_direction, UNIT_Y_VECTOR3)
+        assert_vectors_close(global_ray.current_position, (-5, 0, 5))
+        assert local_ray.segment_distances[0] == global_ray.segment_distances[0]
+        assert local_ray.media_history[0].name == global_ray.media_history[0].name
+
+    def test_localize_ray_rotation(self, air: ConstantMaterial):
+        """test localization of rotated coordinate systems."""
+        global_ray = OpticalRay.ray_x()
+        cs = CoordinateSystem(ry=PI / 2)
+
+        local_ray = cs.localize(global_ray)
+        assert_vectors_close(local_ray.origin, ORIGIN_POINT3)
+        assert_vectors_close(local_ray.current_direction, -UNIT_Z_VECTOR3)
+
+        global_ray = OpticalRay.ray_x(origin=UNIT_X_VECTOR3 + UNIT_Z_VECTOR3)
+        cs = CoordinateSystem(ry=PI / 2)
+
+        local_ray = cs.localize(global_ray)
+        assert_vectors_close(local_ray.origin, -UNIT_Z_VECTOR3 + UNIT_X_VECTOR3)
+        assert_vectors_close(local_ray.current_direction, -UNIT_Z_VECTOR3)
+
+        global_ray.propagate(10, air)
+        local_ray = cs.localize(global_ray)
+        assert_vectors_close(
+            local_ray.current_position, -11 * UNIT_Z_VECTOR3 + UNIT_X_VECTOR3
+        )
+        assert local_ray.media_history[-1].name == global_ray.media_history[-1].name
+
+    def test_neasted_coordinate_transform(self):
+        """Test nested coordinate system transformation."""
+        global_ray = OpticalRay.ray_x(
+            origin=UNIT_X_VECTOR3 + UNIT_Y_VECTOR3 + UNIT_Z_VECTOR3
+        )
+
+        cs1 = CoordinateSystem(x=5)
+        cs2 = CoordinateSystem(y=10, parent_cs=cs1)
+
+        local_ray = cs2.localize(global_ray)
+        assert_vectors_close(local_ray.origin, (-4, -9, 1))
+        assert_vectors_close(local_ray.initial_direction, UNIT_X_VECTOR3)
+
+        cs3 = CoordinateSystem(rz=3 * PI / 2, parent_cs=cs2)
+        local_ray = cs3.localize(global_ray)
+        assert_vectors_close(local_ray.origin, (-9, 4, 1))
+        assert_vectors_close(local_ray.initial_direction, -UNIT_Y_VECTOR3)

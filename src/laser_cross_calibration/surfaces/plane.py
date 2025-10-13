@@ -5,12 +5,20 @@ from typing import TYPE_CHECKING
 import numpy as np
 import plotly.graph_objects as go
 
-from laser_cross_calibration.constants import VSMALL
+from laser_cross_calibration.constants import (
+    ORIGIN_POINT3,
+    UNIT_X_VECTOR3,
+    UNIT_Y_VECTOR3,
+    UNIT_Z_VECTOR3,
+    VSMALL,
+)
+from laser_cross_calibration.coordinate_system import CoordinateSystem
 from laser_cross_calibration.surfaces.base import (
     IntersectionResult,
     Surface,
     get_colorscale,
 )
+from laser_cross_calibration.materials import AIR
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
@@ -33,6 +41,7 @@ class Plane(Surface):
         normal: VECTOR3,
         display_size=(-2, -2, 2, 2),
         surface_id: int | None = None,
+        coordinate_system: CoordinateSystem | None = None,
         **kwargs,
     ) -> None:
         """
@@ -46,7 +55,9 @@ class Plane(Surface):
         Raises:
             ValueError: If normal vector is zero
         """
-        super().__init__(surface_id=surface_id, **kwargs)
+        super().__init__(
+            surface_id=surface_id, coordinate_system=coordinate_system, **kwargs
+        )
 
         self.display_bounds = display_size
         self.point = np.asarray(point, dtype=np.float64)
@@ -58,21 +69,32 @@ class Plane(Surface):
         self.normal = normalize(normal_array)
 
     def intersect(self, ray: OpticalRay) -> IntersectionResult:
+        """Calculate the intersection between a ray and this plane.
+
+        The intersection is calculated in the coordinate system of the surface.
+        Therefor the ray gets localized, the intersection is calculated and the
+        result transformed back to the world coordinate space.
+        """
+        local_ray = self.coordinate_system.localize(ray)
         result = IntersectionResult()
 
-        denom = np.dot(ray.current_direction, self.normal)
+        denom = np.dot(local_ray.current_direction, self.normal)
 
         if abs(denom) < VSMALL:
             return result
 
-        t = np.dot(self.point - ray.position, self.normal) / denom
+        t = np.dot(-local_ray.current_position, self.normal) / denom
 
         if t < VSMALL:
             return result
 
+        # since the ray will be discared the medium is just a dummy
+        local_ray.propagate(t, medium=AIR)
+
+        global_ray = self.coordinate_system.globalize(local_ray)
         result.hit = True
         result.distance = t
-        result.point = ray.position + t * ray.current_direction
+        result.point = global_ray.current_position
         result.normal = self.normal if denom < 0.0 else -self.normal
         result.surface_id = self.surface_id
 
@@ -121,9 +143,45 @@ class Plane(Surface):
             y=[self.point[1], normal_end[1]],
             z=[self.point[2], normal_end[2]],
             mode="lines",
-            line=dict(width=4, color="green"),
+            line={"width": 4, "color": "green"},
             name=f"Normal {self.surface_id}",
             showlegend=False,
         )
 
         return [surface, normal_trace]
+
+    @classmethod
+    def create_xy(
+        cls, display_size=(-2, -2, 2, 2), surface_id: int | None = None, **kwargs
+    ) -> Plane:
+        return cls(
+            point=ORIGIN_POINT3,
+            normal=UNIT_Z_VECTOR3,
+            surface_id=surface_id,
+            display_size=display_size,
+            **kwargs,
+        )
+
+    @classmethod
+    def create_xz(
+        cls, display_size=(-2, -2, 2, 2), surface_id: int | None = None, **kwargs
+    ) -> Plane:
+        return cls(
+            point=ORIGIN_POINT3,
+            normal=UNIT_Y_VECTOR3,
+            surface_id=surface_id,
+            display_size=display_size,
+            **kwargs,
+        )
+
+    @classmethod
+    def create_yz(
+        cls, display_size=(-2, -2, 2, 2), surface_id: int | None = None, **kwargs
+    ) -> Plane:
+        return cls(
+            point=ORIGIN_POINT3,
+            normal=UNIT_X_VECTOR3,
+            surface_id=surface_id,
+            display_size=display_size,
+            **kwargs,
+        )

@@ -59,7 +59,7 @@ class EllipticCylinder(Surface):
         result = IntersectionResult()
 
         # Transform to ellipse coordinate system
-        oc = ray.position - self.center
+        oc = ray.current_position - self.center
 
         # Project ray direction and oc onto ellipse plane
         d_u = np.dot(ray.current_direction, self.major_axis)
@@ -96,7 +96,7 @@ class EllipticCylinder(Surface):
 
         result.hit = True
         result.distance = t
-        result.point = ray.position + t * ray.current_direction
+        result.point = ray.current_position + t * ray.current_direction
 
         # Calculate normal at intersection point
         point_rel = result.point - self.center
