@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from laser_cross_calibration.tracing.ray import OpticalRay
     from laser_cross_calibration.types import POINT3, VECTOR3
 
+from laser_cross_calibration.constants import NAN_POINT3, NAN_VECTOR3
+
 
 def get_surface_color(surface_id: int) -> str:
     """
@@ -81,13 +83,13 @@ class IntersectionResult:
 
     hit: bool = False
     distance: float = np.inf
-    point: POINT3 = field(default_factory=lambda: np.array([np.nan, np.nan, np.nan]))
-    normal: VECTOR3 = field(default_factory=lambda: np.array([np.nan, np.nan, np.nan]))
+    point: POINT3 = field(default_factory=lambda: NAN_POINT3.copy())
+    normal: VECTOR3 = field(default_factory=lambda: NAN_VECTOR3.copy())
     surface_id: int = -1
     triangle_id: int = -1
-    barycentric_u: float = 0.0
-    barycentric_v: float = 0.0
-    barycentric_w: float = 0.0
+    barycentric_u: float = float("nan")
+    barycentric_v: float = float("nan")
+    barycentric_w: float = float("nan")
 
 
 class Surface(ABC):
@@ -103,9 +105,7 @@ class Surface(ABC):
 
     _id_counter: int = 0
 
-    def __init__(
-        self, surface_id: int | None = None, material_name: str = "unknown"
-    ) -> None:
+    def __init__(self, surface_id: int | None = None, info: str = "unknown") -> None:
         """
         Initialize surface with identification.
 
@@ -123,7 +123,7 @@ class Surface(ABC):
             Surface._id_counter = max(Surface._id_counter, surface_id + 1)
         else:
             raise ValueError(f"Surface id must be type int, got <{type(surface_id)}>")
-        self.material_name: str = material_name
+        self.info: str = info
 
     @classmethod
     def reset_id_counter(cls) -> None:
@@ -173,5 +173,5 @@ class Surface(ABC):
         return (
             f"{self.__class__.__qualname__}("
             f"surface_id={self.surface_id}, "
-            f"material_name='{self.material_name}')"
+            f"info='{self.info}')"
         )

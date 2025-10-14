@@ -147,6 +147,34 @@ class TriSurface(Surface):
 
         return vertex_normals
 
+    @staticmethod
+    def interpolate_from_barycentric(
+        v0_value: NDArray | float,
+        v1_value: NDArray | float,
+        v2_value: NDArray | float,
+        u: float,
+        v: float,
+    ) -> NDArray | float:
+        """
+        Interpolate values at triangle vertices using barycentric coordinates.
+
+        Barycentric coordinates (u, v, w) represent a point's position within
+        a triangle where w = 1 - u - v. Each coordinate represents the weight
+        of the corresponding vertex.
+
+        Args:
+            v0_value: Value at vertex 0 (can be scalar or vector)
+            v1_value: Value at vertex 1 (can be scalar or vector)
+            v2_value: Value at vertex 2 (can be scalar or vector)
+            u: Barycentric coordinate for vertex 1
+            v: Barycentric coordinate for vertex 2
+
+        Returns:
+            Interpolated value at the point (u, v) within the triangle
+        """
+        w = 1.0 - u - v
+        return w * v0_value + u * v1_value + v * v2_value
+
     def intersect(self, ray: OpticalRay) -> IntersectionResult:
         """
         Ray-triangle mesh intersection using Möller-Trumbore algorithm.
@@ -226,7 +254,7 @@ class TriSurface(Surface):
         result.distance = valid_distances[closest_idx]
         result.point = ray_origin + result.distance * ray_dir
         result.surface_id = self.surface_id
-        result.triangle_id = triangle_idx
+        result.triangle_id = int(triangle_idx)
         result.barycentric_u = u_closest
         result.barycentric_v = v_closest
         result.barycentric_w = w_closest
@@ -234,10 +262,14 @@ class TriSurface(Surface):
         # Compute normal using smooth interpolation or flat triangle normal
         if self.is_smooth and self.vertex_normals is not None:
             face = self.faces[triangle_idx]
-            result.normal = (
-                w_closest * self.vertex_normals[face[0]]  # w corresponds to vertex 0
-                + u_closest * self.vertex_normals[face[1]]  # u corresponds to vertex 1
-                + v_closest * self.vertex_normals[face[2]]  # v corresponds to vertex 2
+            result.normal = np.asarray(
+                self.interpolate_from_barycentric(
+                    self.vertex_normals[face[0]],
+                    self.vertex_normals[face[1]],
+                    self.vertex_normals[face[2]],
+                    u_closest,
+                    v_closest,
+                )
             )
             result.normal = normalize(result.normal)
         else:
