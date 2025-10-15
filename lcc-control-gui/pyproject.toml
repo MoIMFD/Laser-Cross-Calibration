@@ -4,16 +4,14 @@ version = "0.1.0"
 description = "PySide6 GUI for controlling Merlin-based laser cross calibration stage."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-      "pyside6>=6.8.1",
-      "pyserial>=3.5",
-      "colorama>=0.4.6",
-  ]
+dependencies = ["pyside6==6.9.2", "pyserial>=3.5", "colorama>=0.4.6"]
+
+[dependency-groups]
+dev = ["pytest>=8.4.1", "pytest-mock>=3.14.0"]
 
 [build-system]
-  requires = ["hatchling"]
-  build-backend = "hatchling.build"
-
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 
 [tool.ruff]
@@ -47,6 +45,3 @@ addopts = [
     "--tb=short",
     "--color=yes",
 ]
-
-
-
