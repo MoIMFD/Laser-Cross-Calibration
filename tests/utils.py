@@ -9,5 +9,5 @@ def assert_vectors_close(actual, expected, atol=1e-6, rtol=1e-6):
 
 
 def assert_allclose_list_of_vectors(obj1, obj2):
-    for elem1, elem2 in zip(obj1, obj2):
+    for elem1, elem2 in zip(obj1, obj2, strict=False):
         assert_vectors_close(elem1, elem2)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from laser_cross_calibration.materials import ConstantMaterial

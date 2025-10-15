@@ -1,20 +1,23 @@
 from __future__ import annotations
 
-from math import isclose, pi as PI
+from math import isclose
+from math import pi as PI
+from typing import TYPE_CHECKING
 
 import pytest
 
-from laser_cross_calibration.coordinate_system import CoordinateSystem
-from laser_cross_calibration.materials.constant import ConstantMaterial
-from laser_cross_calibration.tracing import OpticalRay
 from laser_cross_calibration.constants import (
+    ORIGIN_POINT3,
     UNIT_X_VECTOR3,
     UNIT_Y_VECTOR3,
     UNIT_Z_VECTOR3,
-    ORIGIN_POINT3,
 )
-
+from laser_cross_calibration.coordinate_system import CoordinateSystem
+from laser_cross_calibration.tracing import OpticalRay
 from tests.utils import assert_vectors_close
+
+if TYPE_CHECKING:
+    from laser_cross_calibration.materials.constant import ConstantMaterial
 
 
 @pytest.mark.unit

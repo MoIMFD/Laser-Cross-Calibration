@@ -135,7 +135,7 @@ class RectangularPlane(Surface):
     def intersect(self, ray: OpticalRay) -> IntersectionResult:
         result = IntersectionResult()
 
-        local_ray = self.coordinate_system.localize(ray)
+        self.coordinate_system.localize(ray)
 
         # First check intersection with infinite plane
         denom = np.dot(ray.current_direction, self.normal)

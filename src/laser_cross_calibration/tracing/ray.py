@@ -203,7 +203,9 @@ class OpticalRay:
         return self
 
     def copy(self) -> OpticalRay:
-        """Create a new OpticalRay instance as an independent copy of the current one."""
+        """Create a new OpticalRay instance as an independent copy of the current
+        one.
+        """
         copied_ray = OpticalRay.ray_x()
         copied_ray.origin = self.origin.copy()
         copied_ray.initial_direction = self.initial_direction.copy()

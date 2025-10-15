@@ -208,7 +208,9 @@ class TestOpticalRay:
         )
         assert all(
             mat1.name == mat2.name and math.isclose(mat1.n(), mat2.n())
-            for mat1, mat2 in zip(original_ray.media_history, copied_ray.media_history)
+            for mat1, mat2 in zip(
+                original_ray.media_history, copied_ray.media_history, strict=False
+            )
         )
         assert_allclose_list_of_vectors(
             original_ray.segment_distances, copied_ray.segment_distances
@@ -226,7 +228,9 @@ class TestOpticalRay:
 
         assert not all(
             mat1.name == mat2.name and math.isclose(mat1.n(), mat2.n())
-            for mat1, mat2 in zip(original_ray.media_history, copied_ray.media_history)
+            for mat1, mat2 in zip(
+                original_ray.media_history, copied_ray.media_history, strict=False
+            )
         )
 
         original_ray.propagate(distance=1.0, medium=air)

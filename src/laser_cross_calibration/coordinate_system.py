@@ -31,10 +31,7 @@ class CoordinateSystem:
 
     def localize(self, ray: OpticalRay) -> OpticalRay:
         """Transform a ray from world coordinates to the local coordinate system."""
-        if self.parent_cs:
-            local_ray = self.parent_cs.localize(ray)
-        else:
-            local_ray = ray.copy()
+        local_ray = self.parent_cs.localize(ray) if self.parent_cs else ray.copy()
         local_ray.translate(-self.x, -self.y, -self.z)
         local_ray.rotate(self.rx, self.ry, self.rz)
 
@@ -43,10 +40,7 @@ class CoordinateSystem:
     def globalize(self, ray: OpticalRay) -> OpticalRay:
         """Transform a ray from the local coordinate system to world coordinates."""
 
-        if self.parent_cs:
-            global_ray = self.parent_cs.globalize(ray)
-        else:
-            global_ray = ray.copy()
+        global_ray = self.parent_cs.globalize(ray) if self.parent_cs else ray.copy()
         global_ray.translate(self.x, self.y, self.z)
         global_ray.rotate(self.rx, self.ry, self.rz)
         return global_ray
@@ -71,7 +65,9 @@ class CoordinateSystem:
         raise NotImplementedError()
 
     def to_dict(self) -> CoordinateSystemDict:
-        """Create a dictionary description of a CoordinateSystem instance from a dict."""
+        """Create a dictionary description of a CoordinateSystem instance from a
+        dict with all relevant parameter.
+        """
 
         return {
             "x": self.x,
