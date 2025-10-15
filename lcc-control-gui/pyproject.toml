@@ -1,0 +1,52 @@
+[project]
+name = "lcc-control-gui"
+version = "0.1.0"
+description = "PySide6 GUI for controlling Merlin-based laser cross calibration stage."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+      "pyside6>=6.8.1",
+      "pyserial>=3.5",
+      "colorama>=0.4.6",
+  ]
+
+[build-system]
+  requires = ["hatchling"]
+  build-backend = "hatchling.build"
+
+
+
+[tool.ruff]
+line-length = 88
+exclude = ["docs"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # Pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",   # isort
+    "PYI", # pyright
+    "TC",  # type-checking
+]
+exclude = ["*.ipynb"]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    # "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--color=yes",
+]
+
+
+
