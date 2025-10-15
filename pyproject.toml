@@ -25,7 +25,7 @@ dev = [
 
 [tool.ruff]
 line-length = 88
-exclude = ["tests", "docs"]
+exclude = ["docs"]
 
 [tool.ruff.lint]
 select = [

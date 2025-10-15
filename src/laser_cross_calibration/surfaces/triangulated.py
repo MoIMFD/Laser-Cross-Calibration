@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+from stl import mesh as stl_mesh
 
 from laser_cross_calibration.constants import VSMALL, VVSMALL
 from laser_cross_calibration.surfaces.base import (
@@ -32,7 +33,7 @@ class TriSurface(Surface):
         self,
         vertices: NDArray[np.floating],
         faces: NDArray[np.integer],
-        smooth: bool = True,
+        is_smooth: bool = False,
         *,
         surface_id: int | None = None,
         **kwargs,
@@ -51,14 +52,14 @@ class TriSurface(Surface):
         # Store and validate mesh data
         self.vertices = np.asarray(vertices, dtype=float)
         self.faces = np.asarray(faces, dtype=int)
-        self.smooth = smooth
+        self.is_smooth = is_smooth
         self._validate_mesh()
 
         # Precompute triangle data for performance
         self.triangle_normals = self._compute_triangle_normals()
 
         # Compute vertex normals for smooth shading
-        if self.smooth:
+        if self.is_smooth:
             self.vertex_normals = self._compute_vertex_normals()
 
         else:
@@ -231,8 +232,7 @@ class TriSurface(Surface):
         result.barycentric_w = w_closest
 
         # Compute normal using smooth interpolation or flat triangle normal
-        if self.smooth and self.vertex_normals is not None:
-            # Professional barycentric interpolation of vertex normals
+        if self.is_smooth and self.vertex_normals is not None:
             face = self.faces[triangle_idx]
             result.normal = (
                 w_closest * self.vertex_normals[face[0]]  # w corresponds to vertex 0
@@ -305,47 +305,24 @@ class TriSurface(Surface):
 
         return cls(vertices, faces, surface_id=surface_id, **kwargs)
 
-
-class StlSurface(TriSurface):
-    """
-    STL (STereoLithography) file format surface.
-
-    Supports both ASCII and binary STL files commonly used in 3D printing
-    and CAD applications.
-    """
-
     @classmethod
-    def from_file(
-        cls,
-        stl_path: str,
-        surface_id: int | None = None,
-        **kwargs,
-    ):
-        """
-        Load STL file and create surface.
+    def from_stl_file(
+        cls, stl_path: str, surface_id: int | None = 0, is_smooth: bool = False
+    ) -> TriSurface:
+        """Create a TriSurface instance from an STL file."""
+        try:
+            stl_data = stl_mesh.Mesh.from_file(str(stl_path))
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"No STL file found at {stl_path}") from e
 
-        Args:
-            stl_path: Path to STL file
-            **kwargs: Additional arguments passed to surface constructor
-
-        Returns:
-            STLSurface instance
-        """
-        # try:
-        # Try numpy-stl first (handles both ASCII and binary)
-        from stl import mesh as stl_mesh
-
-        stl_data = stl_mesh.Mesh.from_file(str(stl_path))
-
-        # STL stores triangles as vectors, need to extract vertices
-        # Check if smooth shading is requested in kwargs
-        smooth = kwargs.get("smooth", True)
-        vertices, faces = cls._extract_vertices_faces(stl_data.vectors, smooth)
-        return cls(vertices, faces, surface_id=surface_id, **kwargs)
+        vertices, faces = cls._extract_vertices_faces(
+            stl_data.vectors, is_smooth=is_smooth
+        )
+        return cls(vertices, faces, surface_id=surface_id, is_smooth=is_smooth)
 
     @staticmethod
     def _extract_vertices_faces(
-        triangle_vectors: np.ndarray, smooth: bool = True
+        triangle_vectors: np.ndarray, is_smooth: bool = True
     ) -> tuple[np.ndarray, np.ndarray]:
         """
         Extract vertices and face indices from STL triangle vectors.
@@ -358,7 +335,7 @@ class StlSurface(TriSurface):
         Returns:
             Tuple of (vertices, faces) arrays
         """
-        if not smooth:
+        if not is_smooth:
             # For flat shading, no need to deduplicate - keep all vertices separate
             vertices = triangle_vectors.reshape(-1, 3)
             faces = np.arange(len(vertices)).reshape(-1, 3)
