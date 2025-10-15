@@ -24,6 +24,9 @@ dev = [
     "pytest-watcher>=0.4.3",
 ]
 
+[tool.uv.workspace]
+members = ["lcc-control-gui"]
+
 [tool.ruff]
 line-length = 88
 exclude = ["docs"]
