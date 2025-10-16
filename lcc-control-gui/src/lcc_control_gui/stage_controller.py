@@ -1,3 +1,10 @@
+"""
+Interface to the physical stage running Marlin. Marlins GCode commands
+are listed here: https://marlinfw.org/docs/gcode/G000-G001.html
+
+2025 Moritz Kluwe
+"""
+
 from __future__ import annotations
 
 import re
@@ -72,8 +79,9 @@ class StageController:
             return None
 
         match = re.search(
-            rf"X:({NUMBER_REGEX})\s*" rf"Y:({NUMBER_REGEX})\s*" rf"Z:({NUMBER_REGEX})",
+            rf"^X:({NUMBER_REGEX})\s*" rf"Y:({NUMBER_REGEX})\s*" rf"Z:({NUMBER_REGEX})",
             response,
+            re.MULTILINE,
         )
         if not match:
             return None

@@ -9,20 +9,20 @@ from lcc_control_gui.stage_controller import StageController
 
 
 @pytest.fixture
-def mock_serial():
+def mock_serial() -> MagicMock:
     return MagicMock(spec=SerialInterface)
 
 
 @pytest.fixture
-def controller(mock_serial):
+def controller(mock_serial) -> StageController:
     return StageController(mock_serial)
 
 
 class TestStageController:
-    def test_home_all_axes(self, controller, mock_serial):
+    def test_home_all_axes(self, controller: StageController, mock_serial):
         mock_serial.send_command.return_value = (SerialInterface.ReplyStatus.OK, "")
 
-        status = controller.home()
+        status = controller.home_axes()
 
         mock_serial.send_command.assert_called_once_with("G28 X Y Z", timeout=30)
         assert status == SerialInterface.ReplyStatus.OK
@@ -30,7 +30,7 @@ class TestStageController:
     def test_home_single_axis(self, controller, mock_serial):
         mock_serial.send_command.return_value = (SerialInterface.ReplyStatus.OK, "")
 
-        status = controller.home(axes=["X"])
+        status = controller.home_axes(axes=["X"])
 
         mock_serial.send_command.assert_called_once_with("G28 X", timeout=30)
         assert status == SerialInterface.ReplyStatus.OK
@@ -38,7 +38,7 @@ class TestStageController:
     def test_home_multiple_axes(self, controller, mock_serial):
         mock_serial.send_command.return_value = (SerialInterface.ReplyStatus.OK, "")
 
-        status = controller.home(axes=["X", "Z"])
+        status = controller.home_axes(axes=["X", "Z"])
 
         mock_serial.send_command.assert_called_once_with("G28 X Z", timeout=30)
         assert status == SerialInterface.ReplyStatus.OK
@@ -100,7 +100,7 @@ class TestStageController:
     def test_read_position_success(self, controller, mock_serial):
         mock_serial.send_command.return_value = (
             SerialInterface.ReplyStatus.OK,
-            "X10.500 Y20.300 Z5.100",
+            "X:10.500 Y:20.300 Z:5.100",
         )
 
         position = controller.read_position()
@@ -108,10 +108,12 @@ class TestStageController:
         mock_serial.send_command.assert_called_once_with("M114")
         assert position == (10.5, 20.3, 5.1)
 
-    def test_read_position_with_extra_text(self, controller, mock_serial):
+    def test_read_position_with_extra_text(
+        self, controller: StageController, mock_serial
+    ):
         mock_serial.send_command.return_value = (
             SerialInterface.ReplyStatus.OK,
-            "Count X:100 Y:200 Z:50\nX10.500 Y20.300 Z5.100",
+            "Count X:100 Y:200 Z:50\nX:10.500 Y:20.300 Z:5.100",
         )
 
         position = controller.read_position()
@@ -158,7 +160,7 @@ class TestStageController:
 
         status = controller.emergency_stop()
 
-        mock_serial.send_command.assert_called_once_with("M112")
+        mock_serial.send_command.assert_called_once_with("M410")
         assert status == SerialInterface.ReplyStatus.OK
 
     def test_trigger_recording(self, controller, mock_serial):
@@ -191,20 +193,32 @@ class TestStageController:
         mock_serial.send_command.assert_called_once_with("M502")
         assert status == SerialInterface.ReplyStatus.OK
 
-    def test_run_gcode_file_success(self, controller, mock_serial, tmp_path):
+    def test_run_gcode_file_success(
+        self, controller: StageController, mock_serial, tmp_path
+    ):
         gcode_file = tmp_path / "test.gcode"
         gcode_file.write_text("G28\nG0 X10\n; Comment\nG0 Y20\n")
 
         mock_serial.send_command.return_value = (SerialInterface.ReplyStatus.OK, "")
         progress_callback = Mock()
 
-        status = controller.run_gcode_file(gcode_file, progress_callback)
+        result = None
 
-        assert status == SerialInterface.ReplyStatus.OK
+        def callback(x):
+            nonlocal result
+            result = x
+
+        controller._run_gcode_thread(
+            gcode_file, progress_callback, completion_callback=callback
+        )
+
+        assert result == SerialInterface.ReplyStatus.OK
         assert mock_serial.send_command.call_count == 3
         assert progress_callback.call_count == 3
 
-    def test_run_gcode_file_with_error(self, controller, mock_serial, tmp_path):
+    def test_run_gcode_file_with_error(
+        self, controller: StageController, mock_serial, tmp_path
+    ):
         gcode_file = tmp_path / "test.gcode"
         gcode_file.write_text("G28\nG0 X10\n")
 
@@ -213,35 +227,65 @@ class TestStageController:
             (SerialInterface.ReplyStatus.ERROR, ""),
         ]
 
-        status = controller.run_gcode_file(gcode_file)
+        result = None
 
-        assert status == SerialInterface.ReplyStatus.ERROR
+        def callback(x):
+            nonlocal result
+            result = x
 
-    def test_run_gcode_file_not_found(self, controller, mock_serial):
-        status = controller.run_gcode_file("/nonexistent/file.gcode")
+        controller._run_gcode_thread(gcode_file, completion_callback=callback)
 
-        assert status == SerialInterface.ReplyStatus.ERROR
+        assert result == SerialInterface.ReplyStatus.ERROR
+
+    def test_run_gcode_file_not_found(self, controller: StageController, mock_serial):
+        result = None
+
+        def callback(x):
+            nonlocal result
+            result = x
+
+        controller._run_gcode_thread(
+            "/nonexistent/file.gcode", completion_callback=callback
+        )
+
+        assert result == SerialInterface.ReplyStatus.ERROR
         mock_serial.send_command.assert_not_called()
 
-    def test_run_gcode_file_skip_comments(self, controller, mock_serial, tmp_path):
+    def test_run_gcode_file_skip_comments(
+        self, controller: StageController, mock_serial, tmp_path
+    ):
         gcode_file = tmp_path / "test.gcode"
         gcode_file.write_text("; Full line comment\nG28\n; Another comment\n")
 
         mock_serial.send_command.return_value = (SerialInterface.ReplyStatus.OK, "")
 
-        status = controller.run_gcode_file(gcode_file)
+        result = None
 
-        assert status == SerialInterface.ReplyStatus.OK
+        def callback(x):
+            nonlocal result
+            result = x
+
+        controller._run_gcode_thread(gcode_file, completion_callback=callback)
+
+        assert result == SerialInterface.ReplyStatus.OK
         assert mock_serial.send_command.call_count == 1
         mock_serial.send_command.assert_called_with("G28")
 
-    def test_run_gcode_file_skip_empty_lines(self, controller, mock_serial, tmp_path):
+    def test_run_gcode_file_skip_empty_lines(
+        self, controller: StageController, mock_serial, tmp_path
+    ):
         gcode_file = tmp_path / "test.gcode"
         gcode_file.write_text("G28\n\n\nG0 X10\n")
 
         mock_serial.send_command.return_value = (SerialInterface.ReplyStatus.OK, "")
 
-        status = controller.run_gcode_file(gcode_file)
+        result = None
 
-        assert status == SerialInterface.ReplyStatus.OK
+        def callback(x):
+            nonlocal result
+            result = x
+
+        controller._run_gcode_thread(gcode_file, completion_callback=callback)
+
+        assert result == SerialInterface.ReplyStatus.OK
         assert mock_serial.send_command.call_count == 2
