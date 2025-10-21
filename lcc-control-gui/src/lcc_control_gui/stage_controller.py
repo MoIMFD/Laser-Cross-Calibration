@@ -50,8 +50,6 @@ class StageController:
         self.serial.send_command("G91")
         cmd = f"G0 {axis}{distance:.3f} F{feedrate:.3f}"
         status, _ = self.serial.send_command(cmd)
-        self.serial.send_command("G90")
-
         return status
 
     def move_absolute(
