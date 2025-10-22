@@ -83,7 +83,7 @@ class Plane(Surface):
         if abs(denom) < VSMALL:
             return result
 
-        t = np.dot(-local_ray.current_position, self.normal) / denom
+        t = np.dot(self.point - local_ray.current_position, self.normal) / denom
 
         if t < VSMALL:
             return result

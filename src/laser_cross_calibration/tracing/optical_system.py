@@ -126,5 +126,5 @@ class OpticalSystem:
 
                 if success:
                     current_medium = next_medium
-
+        ray.propagate(self.max_propagation_distance, medium=current_medium)
         return ray

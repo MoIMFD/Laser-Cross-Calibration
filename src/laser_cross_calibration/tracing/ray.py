@@ -141,6 +141,11 @@ class OpticalRay:
         if sin_theta_t_sq > 1.0:
             # Total internal reflection - reflect ray
             self.current_direction = self.current_direction + 2 * cos_theta_i * normal
+
+            # Update the last direction in path history to reflect the reflection
+            if len(self.path_directions) > 0:
+                self.path_directions[-1] = self.current_direction.copy()
+
             return False
 
         # Calculate refracted direction
@@ -151,6 +156,12 @@ class OpticalRay:
         )
 
         self.current_direction = normalize(self.current_direction)
+
+        # Update the last direction in path history to reflect refraction
+        # This ensures path_directions[i] represents the direction FROM position[i]
+        if len(self.path_directions) > 0:
+            self.path_directions[-1] = self.current_direction.copy()
+
         return True
 
     def get_point_at_distance(self, distance: float) -> POINT3:

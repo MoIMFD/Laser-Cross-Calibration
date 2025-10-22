@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 
@@ -56,6 +56,10 @@ class DualLaserStageSource(LaserSource):
             OpticalRay(self.beam_origin1, self.direction1),
             OpticalRay(self.beam_origin2, self.direction2),
         ]
+
+    def translate(self, x=0.0, y=0.0, z=0.0) -> Self:
+        self.origin = self.origin + np.array((x, y, z))
+        return self
 
     def set_origin(self, origin: POINT3) -> None:
         """Update laser origin position."""

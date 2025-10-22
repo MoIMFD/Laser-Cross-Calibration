@@ -1,4 +1,5 @@
 """Material definitions for optical ray tracing."""
+
 from __future__ import annotations
 
 from laser_cross_calibration.materials.base import BaseMaterial
@@ -13,6 +14,7 @@ AIR = ConstantMaterial("air", 1.0)
 WATER = ConstantMaterial("water", 1.33)
 GLYCEROL = ConstantMaterial("glycerol", 1.47)
 PMMA = ConstantMaterial("PMMA", 1.49)
+ELASTOSIL_RT601 = ConstantMaterial("Elastosil RT601", 1.408)
 POLYCARBONATE = ConstantMaterial("polycarbonate", 1.59)
 WATER_GLYCEROL_MIXTURE_90 = WaterGlycerolMixture(
     "water-glycerol", glycerol_fraction=0.9
