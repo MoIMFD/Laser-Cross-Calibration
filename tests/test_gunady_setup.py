@@ -9,6 +9,7 @@ For the specific angles used (11.5° and 12.6°) and the material configuration
 
 Reference: Gunady et al., "Laser Cross-Calibration for Dimensional Metrology"
 """
+from __future__ import annotations
 
 from math import cos, isclose, sin, tan
 
@@ -38,10 +39,14 @@ def calculate_expected_calibration_ratio(
     angle_2 = np.deg2rad(angle_2_deg)
 
     refracted_angle_1_glass = np.arcsin(n_air * np.sin(angle_1) / n_glass)
-    refracted_angle_1_water = np.arcsin(n_glass * np.sin(refracted_angle_1_glass) / n_water)
+    refracted_angle_1_water = np.arcsin(
+        n_glass * np.sin(refracted_angle_1_glass) / n_water
+    )
 
     refracted_angle_2_glass = np.arcsin(n_air * np.sin(angle_2) / n_glass)
-    refracted_angle_2_water = np.arcsin(n_glass * np.sin(refracted_angle_2_glass) / n_water)
+    refracted_angle_2_water = np.arcsin(
+        n_glass * np.sin(refracted_angle_2_glass) / n_water
+    )
 
     alpha_1 = angle_1
     beta_1 = angle_2
@@ -62,7 +67,7 @@ def gunady_optical_system():
         - Fused silica plate: 0 <= y <= 0.05
         - Water region: y > 0.05
     """
-    system = lcc.tracing.OpticalSystem(max_propagation_distance=10)
+    system = lcc.tracing.OpticalSystem(final_propagation_distance=10)
 
     front_interface = lcc.tracing.OpticalInterface(
         geometry=lcc.surfaces.Plane(
@@ -163,9 +168,7 @@ def test_gunady_calibration_ratio(gunady_optical_system, gunady_laser_source):
 
     relative_tolerance = 0.01
 
-    assert isclose(
-        regression.slope, expected_ratio, rel_tol=relative_tolerance
-    ), (
+    assert isclose(regression.slope, expected_ratio, rel_tol=relative_tolerance), (
         f"Calibration ratio mismatch:\n"
         f"  Expected (theory): {expected_ratio:.6f}\n"
         f"  Measured (simulation): {regression.slope:.6f}\n"
@@ -173,13 +176,15 @@ def test_gunady_calibration_ratio(gunady_optical_system, gunady_laser_source):
         f"  Tolerance: {relative_tolerance * 100:.1f}%"
     )
 
-    assert (
-        regression.rvalue > 0.999
-    ), f"Expected linear relationship (R > 0.999), got R = {regression.rvalue:.6f}"
+    assert regression.rvalue > 0.999, (
+        f"Expected linear relationship (R > 0.999), got R = {regression.rvalue:.6f}"
+    )
 
 
 @pytest.mark.unit
-def test_ray_propagates_through_correct_media(gunady_optical_system, gunady_laser_source):
+def test_ray_propagates_through_correct_media(
+    gunady_optical_system, gunady_laser_source
+):
     """Test that rays propagate through the correct sequence of media.
 
     This is a regression test for the bug where rays would incorrectly return to
@@ -203,7 +208,9 @@ def test_ray_propagates_through_correct_media(gunady_optical_system, gunady_lase
             f"Ray {i} should pass through at least 3 media, got {len(media_names)}"
         )
 
-        assert media_names[0] == "air", f"Ray {i} should start in air, got {media_names[0]}"
+        assert media_names[0] == "air", (
+            f"Ray {i} should start in air, got {media_names[0]}"
+        )
 
         assert media_names[1] == "fused silica", (
             f"Ray {i} should pass through fused silica, got {media_names[1]}"
