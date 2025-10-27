@@ -16,6 +16,11 @@ dependencies = [
     "tqdm>=4.67.1",
 ]
 
+[project.optional-dependencies]
+examples = [
+    "mermaid-py>=0.8.0",
+]
+
 [dependency-groups]
 dev = [
     "jupyter>=1.1.1",

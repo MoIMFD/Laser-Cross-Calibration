@@ -28,15 +28,16 @@ class OpticalSystem:
         max_propagation_distance: Maximum ray travel distance
     """
 
-    def __init__(self, max_propagation_distance: float = 1000.0):
+    def __init__(self, final_propagation_distance: float = 1.0):
         """
         Initialize optical system.
 
         Args:
-            max_propagation_distance: Maximum distance for ray segments
+            final_propagation_distance: Propagation distance after last surface
+                interaction.
         """
         self.interfaces: list[OpticalInterface] = []
-        self.max_propagation_distance = max_propagation_distance
+        self.final_propagation_distance = final_propagation_distance
 
     def add_interface(self, interface: OpticalInterface) -> None:
         """Add an optical interface to the system."""
@@ -101,7 +102,7 @@ class OpticalSystem:
             interface, intersection = self.find_next_intersection(ray)
 
             if interface is None:
-                ray.propagate(self.max_propagation_distance, current_medium)
+                ray.propagate(self.final_propagation_distance, current_medium)
                 break
 
             if intersection is not None:
@@ -126,5 +127,16 @@ class OpticalSystem:
 
                 if success:
                     current_medium = next_medium
-        ray.propagate(self.max_propagation_distance, medium=current_medium)
+        ray.propagate(self.final_propagation_distance, medium=current_medium)
         return ray
+
+    def __add__(self, other: OpticalSystem) -> OpticalSystem:
+        final_propagation_distance = max(
+            self.final_propagation_distance, other.final_propagation_distance
+        )
+
+        combined_system = OpticalSystem(
+            final_propagation_distance=final_propagation_distance
+        )
+        combined_system.interfaces = self.interfaces + other.interfaces
+        return combined_system

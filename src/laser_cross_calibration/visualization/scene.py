@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Self
+
 import numpy as np
 import plotly.graph_objects as go
 
@@ -12,6 +14,7 @@ class Scene:
         self.sources: list[LaserSource] = []
         self.systems: list[OpticalSystem] = []
         self.rays: list[OpticalRay] = []
+        self.points: list[tuple[float, float, float]] = []
 
         self.bounds_min: tuple[float, float, float] | None = None
         self.bounds_max: tuple[float, float, float] | None = None
@@ -24,10 +27,18 @@ class Scene:
         self.sources.append(source)
         return self
 
+    def clear_sources(self) -> Self:
+        self.sources: list[LaserSource] = []
+        return self
+
     def add_system(self, system: OpticalSystem) -> Scene:
         if not isinstance(system, OpticalSystem):
             raise ValueError(f"Can only add OpticalSystem s, got {type(system)=}")
         self.systems.append(system)
+        return self
+
+    def clear_systems(self) -> Self:
+        self.systems: list[OpticalSystem] = []
         return self
 
     def add_ray(self, ray: OpticalRay) -> Scene:
@@ -41,6 +52,18 @@ class Scene:
             if not isinstance(ray, OpticalRay):
                 raise ValueError(f"Can only add OpticalRay s, got {type(ray)=}")
             self.rays.append(ray)
+        return self
+
+    def clear_rays(self) -> Self:
+        self.rays: list[OpticalRay] = []
+        return self
+
+    def add_point(self, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> Self:
+        self.points.append((x, y, z))
+        return self
+
+    def clear_points(self) -> Self:
+        self.points: list[tuple[float, float, float]] = []
         return self
 
     def compute_scene_bounds(self, padding_factor: float = 0.1):
@@ -96,7 +119,11 @@ class Scene:
 
         return min_bounds, max_bounds
 
-    def make_figure(self):
+    def make_figure(
+        self,
+        display_bounds_min: tuple[float, float, float] | None = None,
+        display_bounds_max: tuple[float, float, float] | None = None,
+    ) -> go.Figure:
         fig = go.Figure()
 
         for system in self.systems:
@@ -116,11 +143,26 @@ class Scene:
             trace = RayVisualizer(name=f"Ray {i}").ray_to_trace(ray)
             fig.add_trace(trace)
 
-        if self.bounds_min is not None and self.bounds_max is not None:
-            min_bounds = np.array(self.bounds_min)
-            max_bounds = np.array(self.bounds_max)
-        else:
-            min_bounds, max_bounds = self.compute_scene_bounds()
+        if self.points:
+            x, y, z = list(zip(*self.points, strict=True))
+            trace = go.Scatter3d(
+                x=x, y=y, z=z, showlegend=False, marker=dict(size=3, color="black")
+            )
+            fig.add_trace(trace)
+
+        min_bounds = display_bounds_min or self.bounds_min
+        max_bounds = display_bounds_max or self.bounds_max
+
+        if not min_bounds or max_bounds:
+            min_b, max_b = self.compute_scene_bounds()
+            min_bounds = min_bounds or min_b
+            max_bounds = max_bounds or max_b
+
+        if max_bounds is None:
+            raise ValueError(f"Failed to set maximum display bounds. {max_bounds=}")
+
+        if min_bounds is None:
+            raise ValueError(f"Failed to set minimum display bounds. {min_bounds=}")
 
         fig.update_layout(
             scene=dict(

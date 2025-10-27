@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from laser_cross_calibration.constants import VSMALL
 from laser_cross_calibration.tracing.intersection import ray_intersection
@@ -22,7 +22,7 @@ class RayTracer:
     system and finding intersection points between ray paths.
     """
 
-    def __init__(self, optical_system: OpticalSystem):
+    def __init__(self, optical_system: OpticalSystem | None = None):
         """
         Initialize ray tracer.
 
@@ -30,6 +30,13 @@ class RayTracer:
             optical_system: Optical system to trace rays through
         """
         self.system = optical_system
+
+    def add_optical_system(self, system: OpticalSystem) -> Self:
+        if self.system:
+            self.system = self.system + system
+        else:
+            self.system = system
+        return self
 
     def trace_sources(self, sources: list[LaserSource]) -> list[OpticalRay]:
         """

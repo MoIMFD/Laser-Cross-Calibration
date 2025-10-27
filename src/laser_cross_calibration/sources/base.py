@@ -30,7 +30,7 @@ class LaserSource(ABC):
         """
         pass
 
-    def to_plotly(self) -> list[go.Cone]:
+    def to_plotly(self, scale: float = 0.1) -> list[go.Cone]:
         traces = []
         for origin, direction in zip(
             self.get_origins(), self.get_directions(), strict=False
@@ -39,9 +39,9 @@ class LaserSource(ABC):
                 x=[origin[0]],
                 y=[origin[1]],
                 z=[origin[2]],
-                u=[direction[0]],
-                v=[direction[1]],
-                w=[direction[2]],
+                u=[direction[0] * scale],
+                v=[direction[1] * scale],
+                w=[direction[2] * scale],
                 showscale=False,
                 colorscale=[[0, "red"], [1, "red"]],
                 name=f"{self.__class__.__qualname__}",

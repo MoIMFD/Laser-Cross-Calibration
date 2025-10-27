@@ -958,6 +958,11 @@ dependencies = [
     { name = "tqdm" },
 ]
 
+[package.optional-dependencies]
+examples = [
+    { name = "mermaid-py" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "jupyter" },
@@ -971,6 +976,7 @@ dev = [
 requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "matplotlib", specifier = ">=3.10.3" },
+    { name = "mermaid-py", marker = "extra == 'examples'", specifier = ">=0.8.0" },
     { name = "numpy", specifier = ">=2.3.1" },
     { name = "numpy-stl", specifier = ">=3.2.0" },
     { name = "plotly", specifier = ">=6.2.0" },
@@ -979,6 +985,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.16.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
+provides-extras = ["examples"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1116,6 +1123,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/99/5b/a36a337438a14116b16480db471ad061c36c3694df7c2084a0da7ba538b7/matplotlib_inline-0.1.7.tar.gz", hash = "sha256:8423b23ec666be3d16e16b60bdd8ac4e86e840ebd1dd11a30b9f117f2fa0ab90", size = 8159, upload-time = "2024-04-15T13:44:44.803Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8f/8e/9ad090d3553c280a8060fbf6e24dc1c0c29704ee7d1c372f0c174aa59285/matplotlib_inline-0.1.7-py3-none-any.whl", hash = "sha256:df192d39a4ff8f21b1895d72e6a13f5fcc5099f00fa84384e0ea28c2cc0653ca", size = 9899, upload-time = "2024-04-15T13:44:43.265Z" },
+]
+
+[[package]]
+name = "mermaid-py"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cb/b6/b5973f5b4b726f8b09e6558f459f0d6b70ee00206aacd873c8ed972a16cf/mermaid_py-0.8.0.tar.gz", hash = "sha256:8ba7853f88c09ebf9c2d355c0ebd1e272e877c9568c10612ae9d0f57245608ef", size = 21229, upload-time = "2025-05-12T14:42:26.354Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/86/0e/fbcc38fef8ff71e5df09d9d629e8b620fe974709664b81da2774b6debfe2/mermaid_py-0.8.0-py3-none-any.whl", hash = "sha256:dab0463ffe67fb3f13f0058cf5c0c2fa2685136cdc7e4ae3067d8b9d9c9e378a", size = 31741, upload-time = "2025-05-12T14:42:25.04Z" },
 ]
 
 [[package]]
