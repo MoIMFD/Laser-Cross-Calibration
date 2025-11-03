@@ -42,7 +42,7 @@ def line_segment_intersection(
     len1_sq = np.dot(d1, d1)
     len2_sq = np.dot(d2, d2)
 
-    if len1_sq < threshold or len2_sq < threshold:
+    if len1_sq < threshold**2 or len2_sq < threshold**2:
         return False, np.array([np.nan, np.nan, np.nan])
 
     a = len1_sq
@@ -53,7 +53,7 @@ def line_segment_intersection(
 
     denom = a * c - b * b
 
-    if abs(denom) < threshold:
+    if abs(denom) < threshold**2:
         if a > threshold:
             t = -d / a
             closest_on_1 = p1 + t * d1
@@ -94,7 +94,7 @@ def line_segment_intersection(
 
 
 def ray_intersection(
-    ray1: OpticalRay, ray2: OpticalRay, threshold: float = VSMALL
+    ray1: OpticalRay, ray2: OpticalRay, threshold: float = INTERSECTION_THRESHOLD
 ) -> list[POINT3]:
     """
     Find all intersection points between two rays' path segments.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Self
 
-from laser_cross_calibration.constants import VSMALL
+from laser_cross_calibration.constants import INTERSECTION_THRESHOLD
 from laser_cross_calibration.tracing.intersection import ray_intersection
 
 if TYPE_CHECKING:
@@ -56,7 +56,7 @@ class RayTracer:
         return all_rays
 
     def find_beam_crossings(
-        self, rays: list[OpticalRay], threshold: float = VSMALL
+        self, rays: list[OpticalRay], threshold: float = INTERSECTION_THRESHOLD
     ) -> list[POINT3]:
         """
         Find all crossing points between ray paths.
@@ -76,7 +76,7 @@ class RayTracer:
         return crossings
 
     def trace_and_find_crossings(
-        self, sources: list[LaserSource], threshold: float = VSMALL
+        self, sources: list[LaserSource], threshold: float = INTERSECTION_THRESHOLD
     ) -> tuple[list[OpticalRay], list[POINT3]]:
         """
         Trace rays and find crossings in one call.
