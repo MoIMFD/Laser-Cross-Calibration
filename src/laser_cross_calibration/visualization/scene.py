@@ -146,7 +146,18 @@ class Scene:
         if self.points:
             x, y, z = list(zip(*self.points, strict=True))
             trace = go.Scatter3d(
-                x=x, y=y, z=z, showlegend=False, marker=dict(size=3, color="black")
+                x=x,
+                y=y,
+                z=z,
+                showlegend=False,
+                marker=dict(
+                    size=sizes,
+                    color=colors,
+                    line=dict(
+                        width=0.0,
+                    ),
+                ),
+                mode="markers",
             )
             fig.add_trace(trace)
 

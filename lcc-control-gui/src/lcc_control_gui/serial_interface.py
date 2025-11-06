@@ -3,23 +3,26 @@ from __future__ import annotations
 import platform
 import threading
 import time
-from enum import Enum
+from enum import StrEnum
 from glob import glob
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import serial
 from colorama import Fore, Style
 from serial.tools import list_ports
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 class SerialInterface:
-    class ReplyStatus(Enum):
+    class ReplyStatus(StrEnum):
         OK = "ok"
         ERROR = "error"
         TIMEOUT = "timeout"
         BUSY = "busy"
 
-    class LogLevel(Enum):
+    class LogLevel(StrEnum):
         DEBUG = "debug"
         INFO = "info"
         WARNING = "warning"
@@ -36,9 +39,9 @@ class SerialInterface:
         self,
         port: str,
         baud_rate: int = 115200,
-        command_msg_callback=None,
-        log_msg_callback=None,
-        unsolicited_msg_callback=None,
+        command_msg_callback: Callable | None = None,
+        log_msg_callback: Callable | None = None,
+        unsolicited_msg_callback: Callable | None = None,
         reconnect_timeout: int = 5,
     ):
         self.port = port
@@ -66,7 +69,7 @@ class SerialInterface:
 
         self._wait_for_startup()
 
-    def connect(self, timeout):
+    def connect(self, timeout: int):
         deadline = time.time() + timeout
         print(Fore.MAGENTA, end="")
         print(f"[SerialInterface] Connecting to port '{self.port}'...", end="")
@@ -188,7 +191,7 @@ class SerialInterface:
         else:
             print(Fore.GREEN + "[SerialInterface] Device ready" + Style.RESET_ALL)
 
-    def send_command(self, cmd: str, timeout=2) -> tuple[ReplyStatus, str]:
+    def send_command(self, cmd: str, timeout: int = 2) -> tuple[ReplyStatus, str]:
         with self._lock:
             if not self.serial or not self.serial.is_open:
                 return SerialInterface.ReplyStatus.ERROR, "Serial not open"
@@ -323,7 +326,7 @@ def scan_ports():
     return result
 
 
-def is_port_available(port):
+def is_port_available(port: str):
     """
     Check if a specific port is available
 

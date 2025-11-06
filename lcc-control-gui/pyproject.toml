@@ -9,10 +9,6 @@ dependencies = ["pyside6==6.9.2", "pyserial>=3.5", "colorama>=0.4.6"]
 [dependency-groups]
 dev = ["pytest>=8.4.1", "pytest-mock>=3.14.0"]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 
 [tool.ruff]
 line-length = 88
