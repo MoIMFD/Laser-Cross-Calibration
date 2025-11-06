@@ -16,6 +16,7 @@ from laser_cross_calibration.constants import (
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
+    from laser_cross_calibration.coordinate_system import Frame
     from laser_cross_calibration.materials.base import BaseMaterial
     from laser_cross_calibration.types import POINT3, VECTOR3
 
@@ -213,11 +214,28 @@ class OpticalRay:
         self.path_directions = [rotation.apply(dir) for dir in self.path_directions]
         return self
 
+    def localize(self, frame: Frame) -> OpticalRay:
+        local_ray = self.copy()
+        local_ray.origin = local_ray.origin.to_frame(frame)
+        local_ray.initial_direction = local_ray.initial_direction.to_frame(frame)
+        local_ray.current_position = local_ray.current_position.to_frame(frame)
+        local_ray.current_direction = local_ray.current_direction.to_frame(frame)
+        local_ray.path_positions = [
+            position.to_frame(frame) for position in local_ray.path_positions
+        ]
+        local_ray.path_directions = [
+            direction.to_frame(frame) for direction in local_ray.path_directions
+        ]
+        return local_ray
+
+    def globalize(self) -> OpticalRay:
+        return self.localize(frame=self.origin.frame.global_frame())
+
     def copy(self) -> OpticalRay:
         """Create a new OpticalRay instance as an independent copy of the current
         one.
         """
-        copied_ray = OpticalRay.ray_x()
+        copied_ray = OpticalRay(origin=self.origin, direction=self.initial_direction)
         copied_ray.origin = self.origin.copy()
         copied_ray.initial_direction = self.initial_direction.copy()
         copied_ray.current_position = self.current_position.copy()
