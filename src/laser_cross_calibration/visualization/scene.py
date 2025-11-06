@@ -202,7 +202,7 @@ class RayVisualizer:
         self.name = name or "Ray"
 
     def ray_to_trace(self, ray: OpticalRay) -> go.Scatter3d:
-        positions = np.array(ray.path_positions)
+        positions = np.array([point.to_global() for point in ray.path_positions])
 
         # Ray path
         trace = go.Scatter3d(

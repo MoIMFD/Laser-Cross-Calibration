@@ -6,15 +6,17 @@ support arithmetic operations with proper type semantics.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Self, TypeVar
+from typing import TYPE_CHECKING, Self, overload
 
 import numpy as np
+
+from laser_cross_calibration.constants import VSMALL
+from laser_cross_calibration.coordinate_system.utils import check_same_frame
 
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike, NDArray
 
-    from laser_cross_calibration.coordinate_system.frame import Frame
+    from laser_cross_calibration.coordinate_system import Frame
 
 
 class GeometricPrimitive:
@@ -23,6 +25,7 @@ class GeometricPrimitive:
     Uses homogeneous coordinates (x, y, z, w) for unified transformation handling.
     Points have w=1, Vectors have w=0.
     """
+
     def __init__(self, x: float, y: float, z: float, w: float, frame: Frame):
         """Initialize geometric primitive in homogeneous coordinates.
 
@@ -81,7 +84,7 @@ class GeometricPrimitive:
         """Iterate over Cartesian coordinates."""
         return iter(self.coords)
 
-    def to_frame(self, target_frame: Frame):
+    def to_frame(self, target_frame: Frame) -> Self:
         """Transform this primitive to a different reference frame.
 
         Args:
@@ -100,6 +103,9 @@ class GeometricPrimitive:
             # Vectors (w=0): do not normalize, w stays 0
             return type(self)(x=x, y=y, z=z, w=0.0, frame=target_frame)
 
+    def to_global(self) -> Self:
+        return self.to_frame(target_frame=self.frame.global_frame())
+
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__qualname__}("
@@ -108,6 +114,38 @@ class GeometricPrimitive:
             f"z={self.z}, "
             f"frame={self.frame.name})"
         )
+
+    def __mul__(self, other: ArrayLike):
+        copy = self.copy()
+        copy._homogeneous[:3] = copy.coords * other
+        return copy
+
+    def __rmul__(self, other: ArrayLike):
+        copy = self.copy()
+        copy._homogeneous[:3] = copy.coords * other
+        return copy
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        """Handle numpy universal functions to maintain type consistency.
+
+        This prevents numpy from converting our custom types to plain arrays
+        when using operators like *, +, -, etc.
+        """
+        if ufunc == np.multiply and method == "__call__":
+            # Handle scalar * Vector or Vector * scalar
+            if isinstance(inputs[0], (int, float, np.number)):
+                return inputs[1].__rmul__(inputs[0])
+            elif isinstance(inputs[1], (int, float, np.number)):
+                return inputs[0].__mul__(inputs[1])
+
+        # For other ufuncs, convert to array and return array result
+        # This handles operations where maintaining custom type doesn't make sense
+        args = [x.coords if isinstance(x, GeometricPrimitive) else x for x in inputs]
+        return getattr(ufunc, method)(*args, **kwargs)
+
+    def copy(self) -> Self:
+        """Create a copy of this geometric primitive in the same frame."""
+        return type(self)(self.x, self.y, self.z, frame=self.frame)
 
 
 class Vector(GeometricPrimitive):
@@ -134,8 +172,17 @@ class Vector(GeometricPrimitive):
         """
         super().__init__(x=x, y=y, z=z, w=w, frame=frame)
 
+    @overload
+    def __add__(self, other: Point) -> Point: ...
+
+    @overload
+    def __add__(self, other: Vector) -> Vector: ...
+
+    @overload
+    def __add__(self, other: NDArray[np.floating]) -> NDArray[np.floating]: ...
+
     def __add__(
-        self, other: Self | Vector | NDArray[np.floating]
+        self, other: Point | Vector | NDArray[np.floating]
     ) -> Point | Vector | NDArray[np.floating]:
         """Add vector to another vector or point.
 
@@ -159,8 +206,14 @@ class Vector(GeometricPrimitive):
         else:
             return other.__add__(self)
 
+    @overload
+    def __sub__(self, other: Vector) -> Vector: ...
+
+    @overload
+    def __sub__(self, other: NDArray[np.floating]) -> NDArray[np.floating]: ...
+
     def __sub__(
-        self, other: Self | Vector | NDArray[np.floating]
+        self, other: Vector | NDArray[np.floating]
     ) -> Vector | NDArray[np.floating]:
         """Subtract vector from this vector.
 
@@ -181,7 +234,54 @@ class Vector(GeometricPrimitive):
             x, y, z = np.subtract(self, other)
             return Vector(x, y, z, frame=self.frame)
         else:
-            return other.__sub__(self)
+            return other.__rsub__(self)
+
+    @property
+    def magnitude(self) -> float:
+        return np.linalg.norm(self._homogeneous[:3])
+
+    @property
+    def is_zero(self) -> bool:
+        return self.magnitude < VSMALL
+
+    def normalize(self) -> Self:
+        if self.is_zero:
+            raise RuntimeError(f"Can not normalize vector with zero length {self}")
+        self._homogeneous[:3] /= self.magnitude
+        return self
+
+    @classmethod
+    def create_unit_x(cls, frame: Frame) -> Vector:
+        return cls(x=1.0, y=0.0, z=0.0, frame=frame)
+
+    @classmethod
+    def create_unit_y(cls, frame: Frame) -> Vector:
+        return cls(x=0.0, y=1.0, z=0.0, frame=frame)
+
+    @classmethod
+    def create_unit_z(cls, frame: Frame) -> Vector:
+        return cls(x=0.0, y=0.0, z=1.0, frame=frame)
+
+    @classmethod
+    def create_nan(cls, frame: Frame) -> Point:
+        """Return a point at the origin of the specified coordinate system"""
+        return cls(x=np.nan, y=np.nan, z=np.nan, frame=frame)
+
+    def cross(self, other: Vector) -> Vector:
+        """Compute cross product with another vector.
+
+        Args:
+            other: Vector to cross with
+
+        Returns:
+            Vector perpendicular to both input vectors
+
+        Raises:
+            RuntimeError: If frames don't match
+        """
+        check_same_frame(self, other)
+        x, y, z = np.cross(self.coords, other.coords)
+        return Vector(x, y, z, frame=self.frame)
 
 
 class Point(GeometricPrimitive):
@@ -208,8 +308,17 @@ class Point(GeometricPrimitive):
         """
         super().__init__(x=x, y=y, z=z, w=w, frame=frame)
 
+    @overload
+    def __sub__(self, other: Point) -> Vector: ...
+
+    @overload
+    def __sub__(self, other: Vector) -> Point: ...
+
+    @overload
+    def __sub__(self, other: NDArray[np.floating]) -> NDArray[np.floating]: ...
+
     def __sub__(
-        self, other: Self | Vector | NDArray[np.floating]
+        self, other: Point | Vector | NDArray[np.floating]
     ) -> Point | Vector | NDArray[np.floating]:
         """Subtract point or vector from this point.
 
@@ -231,11 +340,17 @@ class Point(GeometricPrimitive):
             x, y, z = np.subtract(self, other)
             return Point(x, y, z, frame=self.frame)
         else:
-            return other.__sub__(self)
+            return other.__rsub__(self)
+
+    @overload
+    def __add__(self, other: Vector) -> Point: ...
+
+    @overload
+    def __add__(self, other: NDArray[np.floating]) -> NDArray[np.floating]: ...
 
     def __add__(
-        self, other: Self | Vector | NDArray[np.floating]
-    ) -> Point | Vector | NDArray[np.floating]:
+        self, other: Vector | NDArray[np.floating]
+    ) -> Point | NDArray[np.floating]:
         """Add vector to this point.
 
         Args:
@@ -257,21 +372,19 @@ class Point(GeometricPrimitive):
         else:
             return other.__add__(self)
 
+    @classmethod
+    def create_origin(cls, frame: Frame) -> Point:
+        """Return a point at the origin of the specified coordinate system"""
+        return cls(x=0.0, y=0.0, z=0.0, frame=frame)
 
-def check_same_frame(object1: GeometricPrimitive, object2: GeometricPrimitive):
-    """Verify that two geometric primitives are in the same reference frame.
+    @classmethod
+    def create_nan(cls, frame: Frame) -> Point:
+        """Return a point at the origin of the specified coordinate system"""
+        return cls(x=np.nan, y=np.nan, z=np.nan, frame=frame)
 
-    Args:
-        object1: First geometric primitive
-        object2: Second geometric primitive
+    @classmethod
+    def from_array(cls, points: NDArray, frame) -> list[Point]:
+        """Creates a list of Point instances from an array of points."""
+        print(points.shape)
 
-    Raises:
-        RuntimeError: If objects are in different frames
-    """
-    if object1.frame != object2.frame:
-        raise RuntimeError(
-            "Can only process objects in same coordinate system, "
-            f"got frame 1 {object1.frame.name} "
-            f"and frame 2 {object2.frame.name}. "
-            "Consider transforming prior to operation."
-        )
+        return [cls(x=x, y=y, z=z, frame=frame) for x, y, z in points.T]

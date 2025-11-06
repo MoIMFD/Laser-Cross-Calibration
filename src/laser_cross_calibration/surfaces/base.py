@@ -16,6 +16,7 @@ from laser_cross_calibration.constants import (
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
+    from laser_cross_calibration.coordinate_system import Point, Vector
     from laser_cross_calibration.tracing.ray import OpticalRay
     from laser_cross_calibration.types import POINT3, VECTOR3
 
@@ -86,8 +87,8 @@ class IntersectionResult:
 
     hit: bool = False
     distance: float = np.inf
-    point: POINT3 = field(default_factory=lambda: NAN_POINT3.copy())
-    normal: VECTOR3 = field(default_factory=lambda: NAN_VECTOR3.copy())
+    point: Point | None = None
+    normal: Vector | None = None
     surface_id: int = -1
     triangle_id: int = -1
     barycentric_u: float = float("nan")
@@ -110,7 +111,6 @@ class Surface(ABC):
 
     def __init__(
         self,
-        surface_id: int | None = None,
         info: str = "unknown",
     ) -> None:
         """
@@ -120,22 +120,11 @@ class Surface(ABC):
             surface_id: Unique identifier for this surface (auto-assigned if None)
             material_name: Human-readable material name
         """
-        if surface_id is None:
-            self.surface_id = Surface._id_counter
-            Surface._id_counter += 1
-        elif isinstance(surface_id, int):
-            if surface_id < 0:
-                raise ValueError(f"Surface id must be non-negative, got {surface_id}")
-            self.surface_id = surface_id
-            Surface._id_counter = max(Surface._id_counter, surface_id + 1)
-        else:
-            raise ValueError(f"Surface id must be type int, got <{type(surface_id)}>")
         self.info: str = info
 
-    @classmethod
-    def reset_id_counter(cls) -> None:
-        """Reset the surface ID counter to 0. Useful for testing/notebooks."""
-        cls._id_counter = 0
+    @property
+    def id(self) -> int:
+        return id(self)
 
     @abstractmethod
     def intersect(self, ray: OpticalRay) -> IntersectionResult:

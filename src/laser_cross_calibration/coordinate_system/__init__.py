@@ -24,5 +24,6 @@ Example:
 
 from laser_cross_calibration.coordinate_system.frame import Frame
 from laser_cross_calibration.coordinate_system.primitives import Point, Vector
+from laser_cross_calibration.coordinate_system.utils import check_same_frame
 
 __all__ = ["Frame", "Point", "Vector"]

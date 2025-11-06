@@ -19,6 +19,8 @@ from laser_cross_calibration.coordinate_system.primitives import Point, Vector
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    # from laser_cross_calibration.coordinate_system.primitives import Point, Vector
+
 
 def invalidate_transform_cache(method):
     """Decorator to invalidate cached transforms when frame is modified.
@@ -313,6 +315,23 @@ class Frame:
     @property
     def origin_global(self):
         return self.origin.to_frame(target_frame=Frame.global_frame())
+
+    def create_vector(self, x: float, y: float, z: float) -> Vector:
+        return Vector(x=x, y=y, z=z, frame=self)
+
+    def create_point(self, x: float, y: float, z: float) -> Point:
+        return Point(x=x, y=y, z=z, frame=self)
+
+    def batch_transform_global(
+        self, points: NDArray[np.floating]
+    ) -> NDArray[np.floating]:
+        points = np.asarray(points)
+        original_shape = points.shape
+        points_homogenous = np.hstack(
+            [points.reshape(-1, 3), np.ones((points.size // 3, 1))]
+        )
+        transformed = points_homogenous @ self.transform_to_global.T
+        return transformed[:, :3].reshape(original_shape)
 
     def __repr__(self) -> str:
         parent_name = self.parent.name if self.parent else "None"

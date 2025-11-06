@@ -10,15 +10,18 @@ from scipy.spatial.transform import Rotation as R
 
 from laser_cross_calibration.constants import (
     INTERSECTION_THRESHOLD,
-    ORIGIN_POINT3,
     VSMALL,
+)
+from laser_cross_calibration.coordinate_system import (
+    Point,
+    Vector,
+    check_same_frame,
 )
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
     from laser_cross_calibration.coordinate_system import Frame
     from laser_cross_calibration.materials.base import BaseMaterial
-    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class OpticalRay:
@@ -40,7 +43,7 @@ class OpticalRay:
         media_history: Media encountered in each segment
     """
 
-    def __init__(self, origin: POINT3, direction: VECTOR3) -> None:
+    def __init__(self, origin: Point, direction: Vector) -> None:
         """
         Initialize optical ray.
 
@@ -52,32 +55,19 @@ class OpticalRay:
             ValueError: If direction vector is zero or origin/direction have wrong shape
         """
         # Validate and convert inputs, use np.array to create an independent copy
-        origin_array = np.array(origin, dtype=np.float64)
-        direction_array = np.array(direction, dtype=np.float64)
-
-        if origin_array.shape != (3,):
-            raise ValueError(f"Origin must be 3D point, got shape {origin_array.shape}")
-        if direction_array.shape != (3,):
-            raise ValueError(
-                f"Direction must be 3D vector, got shape {direction_array.shape}"
-            )
-
-        direction_norm = np.linalg.norm(direction_array)
-        if direction_norm < VSMALL:
-            raise ValueError("Direction vector cannot be zero")
-
+        check_same_frame(origin, direction)
         # Store initial state
-        self.origin: POINT3 = origin_array
-        self.initial_direction: VECTOR3 = normalize(direction_array)
+        self.origin = origin
+        self.initial_direction = direction.normalize()
 
         # Current state
-        self.current_position: POINT3 = self.origin.copy()
-        self.current_direction: VECTOR3 = self.initial_direction.copy()
+        self.current_position: Point = self.origin.copy()
+        self.current_direction: Vector = self.initial_direction.copy()
         self.is_alive: bool = True
 
         # Path history - starts with initial state
-        self.path_positions: list[POINT3] = [self.origin.copy()]
-        self.path_directions: list[VECTOR3] = [self.initial_direction.copy()]
+        self.path_positions: list[Point] = [self.origin.copy()]
+        self.path_directions: list[Vector] = [self.initial_direction.copy()]
         self.segment_distances: list[float] = []
         self.media_history: list[BaseMaterial] = []
 
@@ -93,8 +83,8 @@ class OpticalRay:
             return
 
         # Update position
-        self.current_position = (
-            self.current_position + distance * self.current_direction
+        self.current_position = self.current_position + (
+            self.current_direction * distance
         )
 
         # Record path history
@@ -105,7 +95,7 @@ class OpticalRay:
 
     def refract(
         self,
-        surface_normal: VECTOR3,
+        surface_normal: Vector,
         medium_from: BaseMaterial,
         medium_to: BaseMaterial,
     ) -> bool:
@@ -123,14 +113,16 @@ class OpticalRay:
         if not self.is_alive:
             return False
 
-        normal = normalize(surface_normal)
+        local_ray = self.localize(surface_normal.frame)
+
+        normal = surface_normal.normalize()
 
         # Calculate incident angle
-        cos_theta_i = -np.dot(self.current_direction, normal)
+        cos_theta_i = -np.dot(local_ray.current_direction, normal)
 
         # Ensure normal points toward incoming ray
         if cos_theta_i < 0:
-            normal = -normal
+            normal = -1 * normal
             cos_theta_i = -cos_theta_i
 
         # Apply Snell's law
@@ -141,31 +133,41 @@ class OpticalRay:
         # Check for total internal reflection
         if sin_theta_t_sq > 1.0:
             # Total internal reflection - reflect ray
-            self.current_direction = self.current_direction + 2 * cos_theta_i * normal
+            local_ray.current_direction = (
+                local_ray.current_direction + 2 * cos_theta_i * normal
+            )
 
             # Update the last direction in path history to reflect the reflection
-            if len(self.path_directions) > 0:
-                self.path_directions[-1] = self.current_direction.copy()
+            if len(local_ray.path_directions) > 0:
+                local_ray.path_directions[-1] = local_ray.current_direction.copy()
 
             return False
 
         # Calculate refracted direction
         cos_theta_t = np.sqrt(1.0 - sin_theta_t_sq)
-        self.current_direction = (
-            n_ratio * self.current_direction
+        local_ray.current_direction = (
+            n_ratio * local_ray.current_direction
             + (n_ratio * cos_theta_i - cos_theta_t) * normal
         )
 
-        self.current_direction = normalize(self.current_direction)
+        local_ray.current_direction = local_ray.current_direction.normalize()
 
         # Update the last direction in path history to reflect refraction
         # This ensures path_directions[i] represents the direction FROM position[i]
+        if len(local_ray.path_directions) > 0:
+            local_ray.path_directions[-1] = local_ray.current_direction.copy()
+
+        # Transform the refracted ray back to the original frame
+        global_ray = local_ray.globalize()
+        self.current_direction = global_ray.current_direction.to_frame(
+            self.origin.frame
+        )
         if len(self.path_directions) > 0:
             self.path_directions[-1] = self.current_direction.copy()
 
         return True
 
-    def get_point_at_distance(self, distance: float) -> POINT3:
+    def get_point_at_distance(self, distance: float) -> Point:
         """
         Calculate point along current ray direction at given distance.
 
@@ -190,8 +192,7 @@ class OpticalRay:
         """Translate the complete ray, including its history, used for coordinate
         transformation.
         """
-
-        translation = np.array([x, y, z])
+        translation = Vector(x, y, z, frame=self.origin.frame)
         self.origin += translation
         self.current_position += translation
         self.path_positions = [pos + translation for pos in self.path_positions]
@@ -249,34 +250,31 @@ class OpticalRay:
         return copied_ray
 
     @classmethod
-    def ray_x(cls, origin=ORIGIN_POINT3) -> OpticalRay:
+    def ray_x(cls, origin: Point) -> OpticalRay:
         """Create a ray facing towards positive x axis."""
-        direction = np.zeros(3)
-        direction[0] = 1.0
+        direction = Vector.create_unit_x(frame=origin.frame)
         return cls(origin=origin, direction=direction)
 
     @classmethod
-    def ray_y(cls, origin=ORIGIN_POINT3) -> OpticalRay:
+    def ray_y(cls, origin: Point) -> OpticalRay:
         """Create a ray facing towards positive y axis."""
-        direction = np.zeros(3)
-        direction[1] = 1.0
+        direction = Vector.create_unit_y(frame=origin.frame)
         return cls(origin=origin, direction=direction)
 
     @classmethod
-    def ray_z(cls, origin=ORIGIN_POINT3) -> OpticalRay:
+    def ray_z(cls, origin=Point) -> OpticalRay:
         """Create a ray facing towards positive z axis."""
-        direction = np.zeros(3)
-        direction[2] = 1.0
+        direction = Vector.create_unit_x(frame=origin.frame)
         return cls(origin=origin, direction=direction)
 
 
 def line_segment_intersection(
-    p1: POINT3,
-    p2: POINT3,
-    p3: POINT3,
-    p4: POINT3,
+    p1: Point,
+    p2: Point,
+    p3: Point,
+    p4: Point,
     threshold: float = INTERSECTION_THRESHOLD,
-) -> tuple[bool, POINT3]:
+) -> tuple[bool, Point | None]:
     """
     Find intersection between two 3D line segments.
 
@@ -290,8 +288,10 @@ def line_segment_intersection(
     Returns:
         Tuple of (intersection_found, intersection_point)
     """
+    check_same_frame(p1, p2, p3, p4)
+
     # Convert to numpy arrays
-    p1, p2, p3, p4 = [np.array(p, dtype=np.float64) for p in [p1, p2, p3, p4]]
+    p1, p2, p3, p4 = [np.array(p.coords, dtype=np.float64) for p in [p1, p2, p3, p4]]
 
     # Direction vectors of the segments
     d1 = p2 - p1  # Segment 1 vector
@@ -362,14 +362,14 @@ def line_segment_intersection(
     if distance < threshold:
         # Return midpoint as intersection
         intersection_point = (point1 + point2) / 2
-        return True, intersection_point
+        return True, Point(*intersection_point, frame=p1.frame)
     else:
-        return False, np.array([np.nan, np.nan, np.nan])
+        return False, None
 
 
 def ray_intersection(
     ray1: OpticalRay, ray2: OpticalRay, threshold: float = VSMALL
-) -> list[POINT3]:
+) -> list[Point]:
     """
     Find all intersection points between two rays' path segments.
 

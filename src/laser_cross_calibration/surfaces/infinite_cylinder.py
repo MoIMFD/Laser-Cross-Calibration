@@ -14,35 +14,36 @@ from laser_cross_calibration.surfaces.base import (
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
+    from laser_cross_calibration.coordinate_system import Point, Vector
     from laser_cross_calibration.tracing import OpticalRay
-    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class InfiniteCylinder(Surface):
     def __init__(
         self,
-        center: POINT3,
-        axis: VECTOR3,
+        center: Point,
+        axis: Vector,
         radius: float,
-        display_bounds: tuple[float, float] = (-5, 5),
+        display_size: float = 1,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.center = np.array(center, dtype=np.float64)
-        self.axis = np.array(axis, dtype=np.float64)
-        self.axis = normalize(self.axis)
+        self.center = center
+        self.axis = axis.normalize()
         self.radius = float(radius)
-        self.display_bounds = display_bounds
+        self.display_size = display_size
 
     def intersect(self, ray: OpticalRay) -> IntersectionResult:
+        local_ray = ray.localize(frame=self.center.frame)
         result = IntersectionResult()
 
         # Vector from cylinder center to ray origin
-        oc = ray.current_position - self.center
+        oc = local_ray.current_position - self.center
 
         # Project ray direction and oc onto plane perpendicular to cylinder axis
         d_perp = (
-            ray.current_direction - np.dot(ray.current_direction, self.axis) * self.axis
+            local_ray.current_direction
+            - np.dot(local_ray.current_direction, self.axis) * self.axis
         )
         oc_perp = oc - np.dot(oc, self.axis) * self.axis
 
@@ -71,15 +72,17 @@ class InfiniteCylinder(Surface):
         if t <= VSMALL:
             return result
 
+        local_ray.propagate(t, medium=None)
+
         result.hit = True
         result.distance = t
-        result.point = ray.current_position + t * ray.current_direction
+        result.point = local_ray.current_position
 
         # Normal is perpendicular to axis
         point_to_axis = result.point - self.center
         axis_component = np.dot(point_to_axis, self.axis) * self.axis
-        result.normal = normalize(point_to_axis - axis_component)
-        result.surface_id = self.surface_id
+        result.normal = (point_to_axis - axis_component).normalize()
+        result.surface_id = self.id
 
         return result
 
@@ -89,7 +92,7 @@ class InfiniteCylinder(Surface):
         # Generate cylinder surface in local coordinates
         theta = np.linspace(0, 2 * np.pi, 30)
         s_range = np.linspace(
-            self.display_bounds[0], self.display_bounds[1], 20
+            -self.display_size, self.display_size, 20
         )  # Parameter along axis
         theta_grid, s_grid = np.meshgrid(theta, s_range)
 
@@ -112,20 +115,22 @@ class InfiniteCylinder(Surface):
 
         # Transform to world coordinates
         points = (
-            self.center[:, np.newaxis, np.newaxis]
-            + s_grid[np.newaxis, :, :] * axis[:, np.newaxis, np.newaxis]
-            + x_local[np.newaxis, :, :] * u[:, np.newaxis, np.newaxis]
-            + y_local[np.newaxis, :, :] * v[:, np.newaxis, np.newaxis]
+            self.center[np.newaxis, np.newaxis, :]
+            + s_grid[:, :, np.newaxis] * axis[np.newaxis, np.newaxis, :]
+            + x_local[:, :, np.newaxis] * u[np.newaxis, np.newaxis, :]
+            + y_local[:, :, np.newaxis] * v[np.newaxis, np.newaxis, :]
         )
+
+        points = self.center.frame.batch_transform_global(points)
 
         return [
             go.Surface(
-                x=points[0],
-                y=points[1],
-                z=points[2],
+                x=points[:, :, 0],
+                y=points[:, :, 1],
+                z=points[:, :, 2],
                 opacity=0.4,
-                colorscale=get_colorscale(self.surface_id),
+                colorscale=get_colorscale(self.id),
                 showscale=False,
-                name=f"Cylinder {self.surface_id}",
+                name=f"Cylinder {self.id}",
             )
         ]

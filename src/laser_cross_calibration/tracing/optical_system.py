@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from laser_cross_calibration.materials import AIR
-from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
     from laser_cross_calibration.materials.base import BaseMaterial
@@ -107,7 +106,7 @@ class OpticalSystem:
 
             if intersection is not None:
                 if current_medium is None:
-                    ray_dir = normalize(ray.initial_direction)
+                    ray_dir = ray.initial_direction.normalize()
                     dot_product = np.dot(ray_dir, intersection.normal)
 
                     if dot_product < 0:

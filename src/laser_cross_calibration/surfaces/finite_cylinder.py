@@ -10,16 +10,16 @@ from laser_cross_calibration.surfaces.infinite_cylinder import InfiniteCylinder
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
+    from laser_cross_calibration.coordinate_system import Point, Vector
     from laser_cross_calibration.surfaces.base import (
         IntersectionResult,
     )
     from laser_cross_calibration.tracing import OpticalRay
-    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class FiniteCylinder(InfiniteCylinder):
     def __init__(
-        self, center: POINT3, axis: VECTOR3, radius: float, length: float, **kwargs
+        self, center: Point, axis: Vector, radius: float, length: float, **kwargs
     ):
         """
         Finite cylinder with specified length.
@@ -33,7 +33,7 @@ class FiniteCylinder(InfiniteCylinder):
         super().__init__(center, axis, radius, **kwargs)
         self.length = float(length)
         # set cylinder length as display bounds
-        self.display_bounds = -self.length / 2, self.length / 2
+        self.display_size = self.length / 2
 
     def intersect(self, ray: OpticalRay) -> IntersectionResult:
         # Get intersection from infinite cylinder

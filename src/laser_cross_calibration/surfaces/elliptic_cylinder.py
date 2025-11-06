@@ -14,19 +14,19 @@ from laser_cross_calibration.surfaces.base import (
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
+    from laser_cross_calibration.coordinate_system import Point, Vector
     from laser_cross_calibration.tracing import OpticalRay
-    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class EllipticCylinder(Surface):
     def __init__(
         self,
-        center: POINT3,
-        axis: VECTOR3,
+        center: Point,
+        axis: Vector,
         major_radius: float,
         minor_radius: float,
-        major_axis_direction: VECTOR3,
-        display_bounds: tuple[float, float] = (-5, 5),
+        major_axis_direction: Vector,
+        display_size: float = 5,
         **kwargs,
     ):
         """
@@ -41,29 +41,29 @@ class EllipticCylinder(Surface):
                 to the cylinder axis
         """
         super().__init__(**kwargs)
-        self.center = np.array(center, dtype=np.float64)
-        self.axis = np.array(axis, dtype=np.float64)
-        self.axis = normalize(self.axis)
+        self.center = center
+        self.axis = axis.normalize()
         self.major_radius = float(major_radius)
         self.minor_radius = float(minor_radius)
-        self.display_bounds = display_bounds
+        self.display_size = display_size
 
         # Create orthonormal basis for ellipse
-        major_dir = np.array(major_axis_direction, dtype=np.float64)
+        major_dir = major_axis_direction
         # Project major direction onto plane perpendicular to axis
         major_dir = major_dir - np.dot(major_dir, self.axis) * self.axis
-        self.major_axis = normalize(major_dir)
-        self.minor_axis = normalize(np.cross(self.axis, self.major_axis))
+        self.major_axis = major_dir.normalize()
+        self.minor_axis = self.axis.cross(self.major_axis).normalize()
 
     def intersect(self, ray: OpticalRay) -> IntersectionResult:
+        local_ray = ray.localize(self.center.frame)
         result = IntersectionResult()
 
         # Transform to ellipse coordinate system
-        oc = ray.current_position - self.center
+        oc = local_ray.current_position - self.center
 
         # Project ray direction and oc onto ellipse plane
-        d_u = np.dot(ray.current_direction, self.major_axis)
-        d_v = np.dot(ray.current_direction, self.minor_axis)
+        d_u = np.dot(local_ray.current_direction, self.major_axis)
+        d_v = np.dot(local_ray.current_direction, self.minor_axis)
         oc_u = np.dot(oc, self.major_axis)
         oc_v = np.dot(oc, self.minor_axis)
 
@@ -94,9 +94,11 @@ class EllipticCylinder(Surface):
         if t <= VSMALL:
             return result
 
+        local_ray.propagate(t, None)
+
         result.hit = True
         result.distance = t
-        result.point = ray.current_position + t * ray.current_direction
+        result.point = local_ray.current_position
 
         # Calculate normal at intersection point
         point_rel = result.point - self.center
@@ -107,8 +109,8 @@ class EllipticCylinder(Surface):
         normal_local = (2 * u_comp / (a**2)) * self.major_axis + (
             2 * v_comp / (b**2)
         ) * self.minor_axis
-        result.normal = normalize(normal_local)
-        result.surface_id = self.surface_id
+        result.normal = normal_local.normalize()
+        result.surface_id = self.id
 
         return result
 
@@ -116,7 +118,7 @@ class EllipticCylinder(Surface):
         # Generate elliptic cylinder surface in local coordinates
         theta = np.linspace(0, 2 * np.pi, 30)
         s_range = np.linspace(
-            self.display_bounds[0], self.display_bounds[1], 20
+            -self.display_size, self.display_size, 20
         )  # Parameter along axis
         theta_grid, s_grid = np.meshgrid(theta, s_range)
 
@@ -131,20 +133,22 @@ class EllipticCylinder(Surface):
 
         # Transform to world coordinates using the orthonormal basis
         points = (
-            self.center[:, np.newaxis, np.newaxis]
-            + s_grid[np.newaxis, :, :] * self.axis[:, np.newaxis, np.newaxis]
-            + x_local[np.newaxis, :, :] * self.major_axis[:, np.newaxis, np.newaxis]
-            + y_local[np.newaxis, :, :] * self.minor_axis[:, np.newaxis, np.newaxis]
+            self.center[np.newaxis, np.newaxis, :]
+            + s_grid[:, :, np.newaxis] * self.axis[np.newaxis, np.newaxis, :]
+            + x_local[:, :, np.newaxis] * self.major_axis[np.newaxis, np.newaxis, :]
+            + y_local[:, :, np.newaxis] * self.minor_axis[np.newaxis, np.newaxis, :]
         )
+
+        points = self.center.frame.batch_transform_global(points)
 
         return [
             go.Surface(
-                x=points[0],
-                y=points[1],
-                z=points[2],
+                x=points[:, :, 0],
+                y=points[:, :, 1],
+                z=points[:, :, 2],
                 opacity=0.4,
-                colorscale=get_colorscale(self.surface_id),
+                colorscale=get_colorscale(self.id),
                 showscale=False,
-                name=f"Elliptic Cylinder {self.surface_id}",
+                name=f"Elliptic Cylinder {self.id}",
             )
         ]

@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
     from numpy.typing import NDArray
 
+    from laser_cross_calibration.coordinate_system import Frame, Point
     from laser_cross_calibration.tracing.ray import OpticalRay
-    from laser_cross_calibration.types import POINT3
 
 
 class TriSurface(Surface):
@@ -31,11 +31,10 @@ class TriSurface(Surface):
 
     def __init__(
         self,
+        frame: Frame,
         vertices: NDArray[np.floating],
         faces: NDArray[np.integer],
         is_smooth: bool = False,
-        *,
-        surface_id: int | None = None,
         **kwargs,
     ):
         """
@@ -47,13 +46,15 @@ class TriSurface(Surface):
             smooth: Whether to use smooth normal interpolation (True) or
                 flat triangle normals (False)
         """
-        super().__init__(surface_id=surface_id, **kwargs)
+        super().__init__(**kwargs)
 
         # Store and validate mesh data
         self.vertices = np.asarray(vertices, dtype=float)
         self.faces = np.asarray(faces, dtype=int)
         self.is_smooth = is_smooth
         self._validate_mesh()
+
+        self.frame = frame
 
         # Precompute triangle data for performance
         self.triangle_normals = self._compute_triangle_normals()
@@ -73,11 +74,13 @@ class TriSurface(Surface):
         self.vertices += np.array((x, y, z))
         return self
 
-    def get_bounds(self) -> tuple[POINT3, POINT3]:
+    def get_bounds(self) -> tuple[Point, Point]:
         """Get axis-aligned bounding box for this mesh."""
         min_bounds = np.min(self.vertices, axis=0)
         max_bounds = np.max(self.vertices, axis=0)
-        return min_bounds, max_bounds
+        return self.frame.create_point(*min_bounds), self.frame.create_point(
+            *max_bounds
+        )
 
     def _validate_mesh(self):
         """Validate mesh geometry."""
@@ -117,7 +120,7 @@ class TriSurface(Surface):
         valid_mask = norms > VSMALL
         normals[valid_mask] = normals[valid_mask] / norms[valid_mask, np.newaxis]
 
-        return normals
+        return [self.frame.create_vector(*normal) for normal in normals]
 
     def _compute_vertex_normals(self) -> np.ndarray:
         """
@@ -145,7 +148,7 @@ class TriSurface(Surface):
             vertex_normals[valid_mask] / norms[valid_mask, np.newaxis]
         )
 
-        return vertex_normals
+        return [self.frame.create_vector(*normal) for normal in vertex_normals]
 
     @staticmethod
     def interpolate_from_barycentric(
@@ -180,12 +183,13 @@ class TriSurface(Surface):
         Ray-triangle mesh intersection using Möller-Trumbore algorithm.
         Tests ray against all triangles and returns closest hit.
         """
+        local_ray = ray.localize(self.frame)
         result = IntersectionResult()
         # closest_distance = np.inf
 
         # Ray origin and direction
-        ray_origin = ray.current_position
-        ray_dir = ray.current_direction
+        ray_origin = local_ray.current_position
+        ray_dir = local_ray.current_direction
 
         # Get triangle vertices
         v0 = self.vertices[self.faces[:, 0]]
@@ -222,7 +226,7 @@ class TriSurface(Surface):
         q = np.cross(s, edge1)
 
         # Calculate v parameter and test bound
-        v = np.sum(ray_dir * q, axis=1) / (det + VVSMALL)
+        v = np.sum(ray_dir.coords * q, axis=1) / (det + VVSMALL)
         v_mask = (v >= 0.0) & (u + v <= 1.0)
 
         # Combine masks
@@ -253,7 +257,7 @@ class TriSurface(Surface):
         result.hit = True
         result.distance = valid_distances[closest_idx]
         result.point = ray_origin + result.distance * ray_dir
-        result.surface_id = self.surface_id
+        result.surface_id = self.id
         result.triangle_id = int(triangle_idx)
         result.barycentric_u = u_closest
         result.barycentric_v = v_closest
@@ -262,8 +266,8 @@ class TriSurface(Surface):
         # Compute normal using smooth interpolation or flat triangle normal
         if self.is_smooth and self.vertex_normals is not None:
             face = self.faces[triangle_idx]
-            result.normal = np.asarray(
-                self.interpolate_from_barycentric(
+            result.normal = self.frame.create_vector(
+                *self.interpolate_from_barycentric(
                     self.vertex_normals[face[0]],
                     self.vertex_normals[face[1]],
                     self.vertex_normals[face[2]],
@@ -271,7 +275,7 @@ class TriSurface(Surface):
                     v_closest,
                 )
             )
-            result.normal = normalize(result.normal)
+            result.normal = result.normal.normalize()
         else:
             # Flat shading - use triangle normal
             result.normal = self.triangle_normals[triangle_idx]
@@ -283,17 +287,19 @@ class TriSurface(Surface):
     ) -> list[go.Mesh3d] | list[go.Mesh3d | go.Scatter3d]:
         import plotly.graph_objects as go
 
+        vertices = self.frame.batch_transform_global(self.vertices)
+
         # Create triangle mesh
         mesh = go.Mesh3d(
-            x=self.vertices[:, 0],
-            y=self.vertices[:, 1],
-            z=self.vertices[:, 2],
+            x=vertices[:, 0],
+            y=vertices[:, 1],
+            z=vertices[:, 2],
             i=self.faces[:, 0],
             j=self.faces[:, 1],
             k=self.faces[:, 2],
             opacity=0.2,
-            color=get_surface_color(self.surface_id),
-            name=f"Triangle Mesh {self.surface_id}",
+            color=get_surface_color(self.id),
+            name=f"Triangle Mesh {self.id}",
             showscale=False,
         )
 
@@ -330,16 +336,15 @@ class TriSurface(Surface):
         cls,
         vertices: NDArray,
         faces: NDArray,
-        surface_id: int | None = None,
         **kwargs,
     ):
         """Create triangle surface from raw vertex and face arrays."""
 
-        return cls(vertices, faces, surface_id=surface_id, **kwargs)
+        return cls(vertices, faces, **kwargs)
 
     @classmethod
     def from_stl_file(
-        cls, stl_path: str, surface_id: int | None = 0, is_smooth: bool = False
+        cls, stl_path: str, frame: Frame, is_smooth: bool = False
     ) -> TriSurface:
         """Create a TriSurface instance from an STL file."""
         try:
@@ -350,7 +355,7 @@ class TriSurface(Surface):
         vertices, faces = cls._extract_vertices_faces(
             stl_data.vectors, is_smooth=is_smooth
         )
-        return cls(vertices, faces, surface_id=surface_id, is_smooth=is_smooth)
+        return cls(frame=frame, vertices=vertices, faces=faces, is_smooth=is_smooth)
 
     @staticmethod
     def _extract_vertices_faces(

@@ -12,17 +12,17 @@ from laser_cross_calibration.constants import (
     UNIT_Z_VECTOR3,
     VSMALL,
 )
+from laser_cross_calibration.coordinate_system import check_same_frame
 from laser_cross_calibration.materials import AIR
 from laser_cross_calibration.surfaces.base import (
     IntersectionResult,
     Surface,
     get_colorscale,
 )
-from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
+    from laser_cross_calibration.coordinate_system import Point, Vector
     from laser_cross_calibration.tracing import OpticalRay
-    from laser_cross_calibration.types import POINT3, VECTOR3
 
 
 class Plane(Surface):
@@ -36,10 +36,9 @@ class Plane(Surface):
 
     def __init__(
         self,
-        point: POINT3,
-        normal: VECTOR3,
-        display_size=(-2, -2, 2, 2),
-        surface_id: int | None = None,
+        point: Point,
+        normal: Vector,
+        display_size: float = 2.0,
         **kwargs,
     ) -> None:
         """
@@ -53,16 +52,12 @@ class Plane(Surface):
         Raises:
             ValueError: If normal vector is zero
         """
-        super().__init__(surface_id=surface_id, **kwargs)
+        check_same_frame(point, normal)
+        super().__init__(**kwargs)
 
-        self.display_bounds = display_size
-        self.point = np.asarray(point, dtype=np.float64)
-        normal_array = np.asarray(normal, dtype=np.float64)
-
-        if np.linalg.norm(normal_array) < VSMALL:
-            raise ValueError("Normal vector cannot be zero")
-
-        self.normal = normalize(normal_array)
+        self.display_size = display_size
+        self.point = point
+        self.normal = normal.normalize()
 
     def intersect(self, ray: OpticalRay) -> IntersectionResult:
         """Calculate the intersection between a ray and this plane.
@@ -71,7 +66,7 @@ class Plane(Surface):
         Therefor the ray gets localized, the intersection is calculated and the
         result transformed back to the world coordinate space.
         """
-        local_ray = ray.copy()
+        local_ray = ray.localize(frame=self.point.frame)
         result = IntersectionResult()
 
         denom = np.dot(local_ray.current_direction, self.normal)
@@ -87,12 +82,11 @@ class Plane(Surface):
         # since the ray will be discared the medium is just a dummy
         local_ray.propagate(t, medium=AIR)
 
-        global_ray = local_ray.copy()
         result.hit = True
         result.distance = t
-        result.point = global_ray.current_position
-        result.normal = self.normal if denom < 0.0 else -self.normal
-        result.surface_id = self.surface_id
+        result.point = local_ray.current_position
+        result.normal = self.normal if denom < 0.0 else self.normal * (-1)
+        result.surface_id = self.id
 
         return result
 
@@ -100,8 +94,8 @@ class Plane(Surface):
         self, show_normals: bool = False
     ) -> list[go.Surface] | list[go.Surface | go.Scatter3d]:
         # Create grid points on the plane
-        u_range = np.linspace(self.display_bounds[0], self.display_bounds[2], 2)
-        v_range = np.linspace(self.display_bounds[1], self.display_bounds[3], 2)
+        u_range = np.linspace(-self.display_size, self.display_size, 2)
+        v_range = np.linspace(-self.display_size, self.display_size, 2)
         u_grid, v_grid = np.meshgrid(u_range, v_range)
 
         # Create two orthogonal vectors in the plane
@@ -114,19 +108,21 @@ class Plane(Surface):
 
         # Generate plane points
         points = (
-            self.point[:, np.newaxis, np.newaxis]
-            + u_vec[:, np.newaxis, np.newaxis] * u_grid[np.newaxis, :, :]
-            + v_vec[:, np.newaxis, np.newaxis] * v_grid[np.newaxis, :, :]
+            self.point[np.newaxis, np.newaxis, :]
+            + u_vec[np.newaxis, np.newaxis, :] * u_grid[:, :, np.newaxis]
+            + v_vec[np.newaxis, np.newaxis, :] * v_grid[:, :, np.newaxis]
         )
 
+        points = self.point.frame.batch_transform_global(points)
+
         surface = go.Surface(
-            x=points[0],
-            y=points[1],
-            z=points[2],
+            x=points[:, :, 0],
+            y=points[:, :, 1],
+            z=points[:, :, 2],
             opacity=0.3,
-            colorscale=get_colorscale(self.surface_id),
+            colorscale=get_colorscale(self.id),
             showscale=False,
-            name=f"Plane {self.surface_id}",
+            name=f"Plane {self.id}",
         )
 
         if not show_normals:
@@ -140,7 +136,7 @@ class Plane(Surface):
             z=[self.point[2], normal_end[2]],
             mode="lines",
             line={"width": 4, "color": "green"},
-            name=f"Normal {self.surface_id}",
+            name=f"Normal {self.id}",
             showlegend=False,
         )
 
@@ -148,36 +144,33 @@ class Plane(Surface):
 
     @classmethod
     def create_xy(
-        cls, display_size=(-2, -2, 2, 2), surface_id: int | None = None, **kwargs
+        cls, display_size: float = 2.0, surface_id: int | None = None, **kwargs
     ) -> Plane:
         return cls(
             point=ORIGIN_POINT3,
             normal=UNIT_Z_VECTOR3,
-            surface_id=surface_id,
             display_size=display_size,
             **kwargs,
         )
 
     @classmethod
     def create_xz(
-        cls, display_size=(-2, -2, 2, 2), surface_id: int | None = None, **kwargs
+        cls, display_size: float = 2.0, surface_id: int | None = None, **kwargs
     ) -> Plane:
         return cls(
             point=ORIGIN_POINT3,
             normal=UNIT_Y_VECTOR3,
-            surface_id=surface_id,
             display_size=display_size,
             **kwargs,
         )
 
     @classmethod
     def create_yz(
-        cls, display_size=(-2, -2, 2, 2), surface_id: int | None = None, **kwargs
+        cls, display_size: float = 2.0, surface_id: int | None = None, **kwargs
     ) -> Plane:
         return cls(
             point=ORIGIN_POINT3,
             normal=UNIT_X_VECTOR3,
-            surface_id=surface_id,
             display_size=display_size,
             **kwargs,
         )
