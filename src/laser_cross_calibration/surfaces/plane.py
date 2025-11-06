@@ -21,7 +21,6 @@ from laser_cross_calibration.surfaces.base import (
 from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
-    from laser_cross_calibration.coordinate_system import CoordinateSystem
     from laser_cross_calibration.tracing import OpticalRay
     from laser_cross_calibration.types import POINT3, VECTOR3
 
@@ -41,7 +40,6 @@ class Plane(Surface):
         normal: VECTOR3,
         display_size=(-2, -2, 2, 2),
         surface_id: int | None = None,
-        coordinate_system: CoordinateSystem | None = None,
         **kwargs,
     ) -> None:
         """
@@ -55,9 +53,7 @@ class Plane(Surface):
         Raises:
             ValueError: If normal vector is zero
         """
-        super().__init__(
-            surface_id=surface_id, coordinate_system=coordinate_system, **kwargs
-        )
+        super().__init__(surface_id=surface_id, **kwargs)
 
         self.display_bounds = display_size
         self.point = np.asarray(point, dtype=np.float64)
@@ -75,7 +71,7 @@ class Plane(Surface):
         Therefor the ray gets localized, the intersection is calculated and the
         result transformed back to the world coordinate space.
         """
-        local_ray = self.coordinate_system.localize(ray)
+        local_ray = ray.copy()
         result = IntersectionResult()
 
         denom = np.dot(local_ray.current_direction, self.normal)
@@ -91,7 +87,7 @@ class Plane(Surface):
         # since the ray will be discared the medium is just a dummy
         local_ray.propagate(t, medium=AIR)
 
-        global_ray = self.coordinate_system.globalize(local_ray)
+        global_ray = local_ray.copy()
         result.hit = True
         result.distance = t
         result.point = global_ray.current_position

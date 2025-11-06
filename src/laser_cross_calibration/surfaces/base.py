@@ -12,7 +12,6 @@ from laser_cross_calibration.constants import (
     NAN_POINT3,
     NAN_VECTOR3,
 )
-from laser_cross_calibration.coordinate_system import CoordinateSystem
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
@@ -113,7 +112,6 @@ class Surface(ABC):
         self,
         surface_id: int | None = None,
         info: str = "unknown",
-        coordinate_system: CoordinateSystem | None = None,
     ) -> None:
         """
         Initialize surface with identification.
@@ -132,7 +130,6 @@ class Surface(ABC):
             Surface._id_counter = max(Surface._id_counter, surface_id + 1)
         else:
             raise ValueError(f"Surface id must be type int, got <{type(surface_id)}>")
-        self.coordinate_system = coordinate_system or CoordinateSystem()
         self.info: str = info
 
     @classmethod
