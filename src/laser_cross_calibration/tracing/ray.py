@@ -264,7 +264,7 @@ class OpticalRay:
     @classmethod
     def ray_z(cls, origin=Point) -> OpticalRay:
         """Create a ray facing towards positive z axis."""
-        direction = Vector.create_unit_x(frame=origin.frame)
+        direction = Vector.create_unit_z(frame=origin.frame)
         return cls(origin=origin, direction=direction)
 
 
@@ -305,7 +305,7 @@ def line_segment_intersection(
     len2_sq = np.dot(d2, d2)
 
     if len1_sq < threshold or len2_sq < threshold:
-        return False, np.array([np.nan, np.nan, np.nan])
+        return False, None
 
     # Dot products
     a = len1_sq  # d1·d1
@@ -342,7 +342,7 @@ def line_segment_intersection(
                     intersection_point = p1 + t_mid * d1
                     return True, intersection_point
 
-        return False, np.array([np.nan, np.nan, np.nan])
+        return False, None
 
     # Solve for parameters of closest approach
     s = (b * e - c * d) / denom  # Parameter for segment 1
@@ -350,7 +350,7 @@ def line_segment_intersection(
 
     # Check if parameters are within [0, 1] (inside segments)
     if not (0 <= s <= 1 and 0 <= t <= 1):
-        return False, np.array([np.nan, np.nan, np.nan])
+        return False, None
 
     # Calculate closest points
     point1 = p1 + s * d1

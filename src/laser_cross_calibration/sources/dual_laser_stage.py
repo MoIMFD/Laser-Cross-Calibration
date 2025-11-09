@@ -66,7 +66,7 @@ class DualLaserStageSource(LaserSource):
         ]
 
     def translate(self, x=0.0, y=0.0, z=0.0) -> Self:
-        self.origin = self.origin + np.array((x, y, z))
+        self.origin = self.origin + self.origin.frame.create_vector(x, y, z)
         return self
 
     def set_origin(self, origin: Point) -> Self:

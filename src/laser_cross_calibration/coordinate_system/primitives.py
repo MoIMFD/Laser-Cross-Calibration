@@ -267,6 +267,14 @@ class Vector(GeometricPrimitive):
         """Return a point at the origin of the specified coordinate system"""
         return cls(x=np.nan, y=np.nan, z=np.nan, frame=frame)
 
+    def __neg__(self) -> Vector:
+        """Negate the vector, inverting its direction.
+
+        Returns:
+            Vector with inverted x, y, z components in the same frame
+        """
+        return Vector(-self.x, -self.y, -self.z, frame=self.frame)
+
     def cross(self, other: Vector) -> Vector:
         """Compute cross product with another vector.
 
