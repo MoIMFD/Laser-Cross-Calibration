@@ -50,8 +50,7 @@ class TestFrameTranslation:
 
         expected_translation = np.array([5.0, 0.0, 0.0])
         np.testing.assert_array_almost_equal(
-            frame.combined_translation,
-            expected_translation
+            frame.combined_translation, expected_translation
         )
 
     def test_translate_xyz(self):
@@ -60,8 +59,7 @@ class TestFrameTranslation:
 
         expected_translation = np.array([1.0, 2.0, 3.0])
         np.testing.assert_array_almost_equal(
-            frame.combined_translation,
-            expected_translation
+            frame.combined_translation, expected_translation
         )
 
     def test_multiple_translations_accumulate(self):
@@ -70,8 +68,7 @@ class TestFrameTranslation:
 
         expected_translation = np.array([4.0, 2.0, 4.0])
         np.testing.assert_array_almost_equal(
-            frame.combined_translation,
-            expected_translation
+            frame.combined_translation, expected_translation
         )
 
     def test_translation_in_transform_matrix(self):
@@ -89,7 +86,7 @@ class TestFrameRotation:
         frame.rotate_euler(z=90, degrees=True)
 
         rotation_matrix = frame.combined_rotation.as_matrix()
-        expected = Rotation.from_euler('z', 90, degrees=True).as_matrix()
+        expected = Rotation.from_euler("z", 90, degrees=True).as_matrix()
         np.testing.assert_array_almost_equal(rotation_matrix, expected)
 
     def test_rotate_euler_xyz(self):
@@ -97,31 +94,29 @@ class TestFrameRotation:
         frame.rotate_euler(x=30, y=45, z=60, degrees=True)
 
         rotation_matrix = frame.combined_rotation.as_matrix()
-        expected = Rotation.from_euler('xyz', [30, 45, 60], degrees=True).as_matrix()
+        expected = Rotation.from_euler("xyz", [30, 45, 60], degrees=True).as_matrix()
         np.testing.assert_array_almost_equal(rotation_matrix, expected)
 
     def test_multiple_rotations_accumulate(self):
         frame = Frame()
         frame.rotate_euler(z=45, degrees=True).rotate_euler(x=30, degrees=True)
 
-        r1 = Rotation.from_euler('z', 45, degrees=True)
-        r2 = Rotation.from_euler('x', 30, degrees=True)
+        r1 = Rotation.from_euler("z", 45, degrees=True)
+        r2 = Rotation.from_euler("x", 30, degrees=True)
         expected = (r1 * r2).as_matrix()
 
         np.testing.assert_array_almost_equal(
-            frame.combined_rotation.as_matrix(),
-            expected
+            frame.combined_rotation.as_matrix(), expected
         )
 
     def test_rotate_with_matrix(self):
         frame = Frame()
-        rotation_matrix = Rotation.from_euler('y', 90, degrees=True).as_matrix()
+        rotation_matrix = Rotation.from_euler("y", 90, degrees=True).as_matrix()
         frame.rotate(rotation_matrix)
 
-        expected = Rotation.from_euler('y', 90, degrees=True).as_matrix()
+        expected = Rotation.from_euler("y", 90, degrees=True).as_matrix()
         np.testing.assert_array_almost_equal(
-            frame.combined_rotation.as_matrix(),
-            expected
+            frame.combined_rotation.as_matrix(), expected
         )
 
 
@@ -296,10 +291,7 @@ class TestFrameFreeze:
         frame.translate(x=5.0)
 
         expected = np.array([5.0, 0.0, 0.0])
-        np.testing.assert_array_almost_equal(
-            frame.combined_translation,
-            expected
-        )
+        np.testing.assert_array_almost_equal(frame.combined_translation, expected)
 
     def test_freeze_returns_self(self):
         frame = Frame()
@@ -344,8 +336,12 @@ class TestFrameUnitVectors:
         unit_x_global = frame.unit_x_global
         unit_y_global = frame.unit_y_global
 
-        np.testing.assert_array_almost_equal(unit_x_global.coords, [0.0, 1.0, 0.0], decimal=5)
-        np.testing.assert_array_almost_equal(unit_y_global.coords, [-1.0, 0.0, 0.0], decimal=5)
+        np.testing.assert_array_almost_equal(
+            unit_x_global.coords, [0.0, 1.0, 0.0], decimal=5
+        )
+        np.testing.assert_array_almost_equal(
+            unit_y_global.coords, [-1.0, 0.0, 0.0], decimal=5
+        )
 
     def test_unit_vectors_with_scaling(self):
         frame = Frame()
@@ -560,7 +556,9 @@ class TestFrameCompatibility:
         p1 = Point(x=1.0, y=2.0, z=3.0, frame=frame1)
         p2 = Point(x=4.0, y=5.0, z=6.0, frame=frame2)
 
-        with pytest.raises(RuntimeError, match="Can only process objects in same coordinate system"):
+        with pytest.raises(
+            RuntimeError, match="Can only process objects in same coordinate system"
+        ):
             p1 - p2
 
     def test_point_vector_different_frames_raises_error(self):
@@ -570,7 +568,9 @@ class TestFrameCompatibility:
         point = Point(x=1.0, y=2.0, z=3.0, frame=frame1)
         vector = Vector(x=4.0, y=5.0, z=6.0, frame=frame2)
 
-        with pytest.raises(RuntimeError, match="Can only process objects in same coordinate system"):
+        with pytest.raises(
+            RuntimeError, match="Can only process objects in same coordinate system"
+        ):
             point + vector
 
     def test_vector_vector_different_frames_raises_error(self):
@@ -580,7 +580,9 @@ class TestFrameCompatibility:
         v1 = Vector(x=1.0, y=2.0, z=3.0, frame=frame1)
         v2 = Vector(x=4.0, y=5.0, z=6.0, frame=frame2)
 
-        with pytest.raises(RuntimeError, match="Can only process objects in same coordinate system"):
+        with pytest.raises(
+            RuntimeError, match="Can only process objects in same coordinate system"
+        ):
             v1 + v2
 
 
@@ -612,7 +614,9 @@ class TestPrimitiveTransformation:
         point_in_frame1 = Point(x=1.0, y=0.0, z=0.0, frame=frame1)
         point_in_frame2 = point_in_frame1.to_frame(frame2)
 
-        np.testing.assert_array_almost_equal(point_in_frame2.coords, [0.0, 4.0, 0.0], decimal=5)
+        np.testing.assert_array_almost_equal(
+            point_in_frame2.coords, [0.0, 4.0, 0.0], decimal=5
+        )
 
     def test_vector_to_frame_translation_invariant(self):
         frame1 = Frame(name="frame1")
@@ -637,7 +641,9 @@ class TestPrimitiveTransformation:
         vector_in_frame1 = Vector(x=1.0, y=0.0, z=0.0, frame=frame1)
         vector_in_frame2 = vector_in_frame1.to_frame(frame2)
 
-        np.testing.assert_array_almost_equal(vector_in_frame2.coords, [0.0, -1.0, 0.0], decimal=5)
+        np.testing.assert_array_almost_equal(
+            vector_in_frame2.coords, [0.0, -1.0, 0.0], decimal=5
+        )
 
     def test_vector_magnitude_preserved_under_rotation(self):
         frame1 = Frame(name="frame1")
@@ -741,8 +747,7 @@ class TestEdgeCases:
         point_3_direct = point.to_frame(frame3)
 
         np.testing.assert_array_almost_equal(
-            point_3_via_2.coords,
-            point_3_direct.coords
+            point_3_via_2.coords, point_3_direct.coords
         )
 
 
@@ -793,7 +798,7 @@ class TestComplexScenarios:
 
         transformed_vectors = [v.to_frame(target_frame) for v in vectors]
 
-        for original, transformed in zip(vectors, transformed_vectors):
+        for original, transformed in zip(vectors, transformed_vectors, strict=False):
             original_magnitude = np.linalg.norm(original.coords)
             transformed_magnitude = np.linalg.norm(transformed.coords)
             np.testing.assert_almost_equal(original_magnitude, transformed_magnitude)

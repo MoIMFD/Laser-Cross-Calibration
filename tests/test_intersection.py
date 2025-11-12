@@ -249,9 +249,7 @@ class TestRayIntersection:
         ray1 = OpticalRay(origin=np.array([0.0, -2.0, 0.0]), direction=UNIT_Y_VECTOR3)
         ray1.propagate(distance=4.0, medium=air)
 
-        ray2 = OpticalRay(
-            origin=np.array([-2.0, 0.0, 0.005]), direction=UNIT_X_VECTOR3
-        )
+        ray2 = OpticalRay(origin=np.array([-2.0, 0.0, 0.005]), direction=UNIT_X_VECTOR3)
         ray2.propagate(distance=4.0, medium=air)
 
         intersections = ray_intersection(ray1, ray2, threshold=threshold)
@@ -296,9 +294,7 @@ class TestRayIntersection:
 
     def test_realistic_laser_cross_scenario(self, air):
         """Test realistic laser cross setup with angled beams."""
-        ray1 = OpticalRay(
-            origin=np.array([-0.1, 0.0, -0.26]), direction=UNIT_Z_VECTOR3
-        )
+        ray1 = OpticalRay(origin=np.array([-0.1, 0.0, -0.26]), direction=UNIT_Z_VECTOR3)
         ray1.propagate(distance=0.3, medium=air)
 
         direction2 = UNIT_X_VECTOR3 - 0.2 * UNIT_Z_VECTOR3

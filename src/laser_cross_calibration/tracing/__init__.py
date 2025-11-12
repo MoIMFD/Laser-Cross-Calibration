@@ -1,4 +1,5 @@
 """Ray tracing module for optical simulation."""
+
 from __future__ import annotations
 
 from laser_cross_calibration.tracing.intersection import (

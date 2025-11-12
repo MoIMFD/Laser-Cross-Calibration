@@ -1,4 +1,5 @@
 """Laser source abstractions."""
+
 from __future__ import annotations
 
 from laser_cross_calibration.sources.base import LaserSource

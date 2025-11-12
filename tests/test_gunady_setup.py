@@ -9,6 +9,7 @@ For the specific angles used (11.5° and 12.6°) and the material configuration
 
 Reference: Gunady et al., "Laser Cross-Calibration for Dimensional Metrology"
 """
+
 from __future__ import annotations
 
 from math import cos, isclose, sin, tan
@@ -176,9 +177,9 @@ def test_gunady_calibration_ratio(gunady_optical_system, gunady_laser_source):
         f"  Tolerance: {relative_tolerance * 100:.1f}%"
     )
 
-    assert regression.rvalue > 0.999, (
-        f"Expected linear relationship (R > 0.999), got R = {regression.rvalue:.6f}"
-    )
+    assert (
+        regression.rvalue > 0.999
+    ), f"Expected linear relationship (R > 0.999), got R = {regression.rvalue:.6f}"
 
 
 @pytest.mark.unit
@@ -204,17 +205,17 @@ def test_ray_propagates_through_correct_media(
     for i, ray in enumerate(rays):
         media_names = [medium.name for medium in ray.media_history]
 
-        assert len(media_names) >= 3, (
-            f"Ray {i} should pass through at least 3 media, got {len(media_names)}"
-        )
+        assert (
+            len(media_names) >= 3
+        ), f"Ray {i} should pass through at least 3 media, got {len(media_names)}"
 
-        assert media_names[0] == "air", (
-            f"Ray {i} should start in air, got {media_names[0]}"
-        )
+        assert (
+            media_names[0] == "air"
+        ), f"Ray {i} should start in air, got {media_names[0]}"
 
-        assert media_names[1] == "fused silica", (
-            f"Ray {i} should pass through fused silica, got {media_names[1]}"
-        )
+        assert (
+            media_names[1] == "fused silica"
+        ), f"Ray {i} should pass through fused silica, got {media_names[1]}"
 
         assert media_names[2] == "water", (
             f"Ray {i} should enter water after glass, got {media_names[2]} "

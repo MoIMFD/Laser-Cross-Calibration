@@ -1,9 +1,9 @@
 # Laser Cross Calibration
 
-A precision laser cross-calibration system for volumetric PIV (Particle Image Velocimetry) camera calibration using ray tracing through complex optical geometries. 
+A precision laser cross-calibration system for volumetric PIV (Particle Image Velocimetry) camera calibration using ray tracing through complex optical geometries.
 
 ## Concept
-The laser cross calibration works by moving the intersection point of two laser beams through a volume. By taking pictures and knowing the world space location of the intersection, this information can be used for camera calibration. This method has the advantage of being non-invasive. For simple configurations, e.g. a beam at an angle through a flat surface, the intersection can be calculated easily. However, more complex systems require the aid of non-sequential raytracing. The goal is to provide a good estimation of the intersection point in world coordinates to create an initial calibration which can subsequently be refined using _Volume-Self-Calibration_ or similar methods. 
+The laser cross calibration works by moving the intersection point of two laser beams through a volume. By taking pictures and knowing the world space location of the intersection, this information can be used for camera calibration. This method has the advantage of being non-invasive. For simple configurations, e.g. a beam at an angle through a flat surface, the intersection can be calculated easily. However, more complex systems require the aid of non-sequential raytracing. The goal is to provide a good estimation of the intersection point in world coordinates to create an initial calibration which can subsequently be refined using _Volume-Self-Calibration_ or similar methods.
 
 ## Goal
 The goal of this package is to create a flexible module for tracing a limited number of rays through an optical system in non-sequential order.
