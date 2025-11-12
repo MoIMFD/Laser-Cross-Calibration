@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Self
 
-import numpy as np
+from hazy.utils import check_same_frame
 
-from laser_cross_calibration.coordinate_system.utils import check_same_frame
 from laser_cross_calibration.sources.base import LaserSource
 from laser_cross_calibration.tracing.ray import OpticalRay
 
 if TYPE_CHECKING:
-    from laser_cross_calibration.coordinate_system import Point, Vector
+    from hazy import Point, Vector
 
 
 class SingleLaserSource(LaserSource):

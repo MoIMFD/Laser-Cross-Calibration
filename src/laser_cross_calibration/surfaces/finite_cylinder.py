@@ -9,8 +9,8 @@ from laser_cross_calibration.surfaces.infinite_cylinder import InfiniteCylinder
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
+    from hazy import Point, Vector
 
-    from laser_cross_calibration.coordinate_system import Point, Vector
     from laser_cross_calibration.surfaces.base import (
         IntersectionResult,
     )

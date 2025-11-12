@@ -3,22 +3,17 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-from laser_cross_calibration.constants import (
-    NAN_POINT3,
-    NAN_VECTOR3,
-)
-
 if TYPE_CHECKING:
     import plotly.graph_objects as go
+    from hazy import Point, Vector
 
-    from laser_cross_calibration.coordinate_system import Point, Vector
     from laser_cross_calibration.tracing.ray import OpticalRay
-    from laser_cross_calibration.types import POINT3, VECTOR3
+    from laser_cross_calibration.types import POINT3
 
 
 def get_surface_color(surface_id: int) -> str:

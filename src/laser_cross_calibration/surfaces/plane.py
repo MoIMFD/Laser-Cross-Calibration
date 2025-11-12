@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.graph_objects as go
+from hazy.utils import check_same_frame
 
 from laser_cross_calibration.constants import (
     ORIGIN_POINT3,
@@ -12,7 +13,6 @@ from laser_cross_calibration.constants import (
     UNIT_Z_VECTOR3,
     VSMALL,
 )
-from laser_cross_calibration.coordinate_system import check_same_frame
 from laser_cross_calibration.materials import AIR
 from laser_cross_calibration.surfaces.base import (
     IntersectionResult,
@@ -21,7 +21,8 @@ from laser_cross_calibration.surfaces.base import (
 )
 
 if TYPE_CHECKING:
-    from laser_cross_calibration.coordinate_system import Point, Vector
+    from hazy import Point, Vector
+
     from laser_cross_calibration.tracing import OpticalRay
 
 

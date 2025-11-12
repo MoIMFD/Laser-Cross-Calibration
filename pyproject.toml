@@ -5,6 +5,7 @@ description = "A python package for non-sequential ray tracing with limited numb
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "hazy-frames",
     "loguru>=0.7.3",
     "matplotlib>=3.10.3",
     "numpy>=2.3.1",
@@ -33,6 +34,9 @@ dev = [
 
 [tool.uv.workspace]
 members = ["lcc-control-gui"]
+
+[tool.uv.sources]
+hazy-frames = { git = "https://github.com/Littie28/hazy-frames.git" }
 
 [tool.ruff]
 line-length = 88

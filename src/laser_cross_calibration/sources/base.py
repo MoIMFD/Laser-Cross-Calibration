@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, NotRequired, TypedDict
 import plotly.graph_objects as go
 
 if TYPE_CHECKING:
-    from laser_cross_calibration.coordinate_system import Point, Vector
+    from hazy import Point, Vector
+
     from laser_cross_calibration.tracing.ray import OpticalRay
 
 

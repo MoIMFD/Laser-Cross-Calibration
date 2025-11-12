@@ -6,20 +6,21 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from laser_cross_calibration.constants import INTERSECTION_THRESHOLD, VSMALL
+from laser_cross_calibration.constants import INTERSECTION_THRESHOLD
 
 if TYPE_CHECKING:
+    from hazy import Point
+
     from laser_cross_calibration.tracing.ray import OpticalRay
-    from laser_cross_calibration.types import POINT3
 
 
 def line_segment_intersection(
-    p1: POINT3,
-    p2: POINT3,
-    p3: POINT3,
-    p4: POINT3,
+    p1: Point,
+    p2: Point,
+    p3: Point,
+    p4: Point,
     threshold: float = INTERSECTION_THRESHOLD,
-) -> tuple[bool, POINT3]:
+) -> tuple[bool, Point | None]:
     """
     Find intersection between two 3D line segments.
 
@@ -33,7 +34,7 @@ def line_segment_intersection(
     Returns:
         Tuple of (intersection_found, intersection_point)
     """
-    p1, p2, p3, p4 = [np.array(p, dtype=np.float64) for p in [p1, p2, p3, p4]]
+    # p1, p2, p3, p4 = [np.array(p, dtype=np.float64) for p in [p1, p2, p3, p4]]
 
     d1 = p2 - p1
     d2 = p4 - p3
@@ -43,7 +44,7 @@ def line_segment_intersection(
     len2_sq = np.dot(d2, d2)
 
     if len1_sq < threshold**2 or len2_sq < threshold**2:
-        return False, np.array([np.nan, np.nan, np.nan])
+        return False, None
 
     a = len1_sq
     b = np.dot(d1, d2)
@@ -73,7 +74,7 @@ def line_segment_intersection(
                     intersection_point = p1 + t_mid * d1
                     return True, intersection_point
 
-        return False, np.array([np.nan, np.nan, np.nan])
+        return False, None
 
     s = (b * e - c * d) / denom
     t = (a * e - b * d) / denom
@@ -87,15 +88,15 @@ def line_segment_intersection(
     distance = np.linalg.norm(point2 - point1)
 
     if distance < threshold:
-        intersection_point = (point1 + point2) / 2
+        intersection_point = point1 + (point1 - point2) * 0.5
         return True, intersection_point
     else:
-        return False, np.array([np.nan, np.nan, np.nan])
+        return False, None
 
 
 def ray_intersection(
     ray1: OpticalRay, ray2: OpticalRay, threshold: float = INTERSECTION_THRESHOLD
-) -> list[POINT3]:
+) -> list[Point]:
     """
     Find all intersection points between two rays' path segments.
 

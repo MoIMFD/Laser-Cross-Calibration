@@ -11,10 +11,10 @@ from laser_cross_calibration.surfaces.base import (
     Surface,
     get_colorscale,
 )
-from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
-    from laser_cross_calibration.coordinate_system import Point, Vector
+    from hazy import Point, Vector
+
     from laser_cross_calibration.tracing import OpticalRay
 
 

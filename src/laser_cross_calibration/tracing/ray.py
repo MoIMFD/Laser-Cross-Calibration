@@ -6,21 +6,21 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
+from hazy import (
+    Point,
+    Vector,
+)
+from hazy.utils import check_same_frame
 from scipy.spatial.transform import Rotation as R
 
 from laser_cross_calibration.constants import (
     INTERSECTION_THRESHOLD,
     VSMALL,
 )
-from laser_cross_calibration.coordinate_system import (
-    Point,
-    Vector,
-    check_same_frame,
-)
-from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
-    from laser_cross_calibration.coordinate_system import Frame
+    from hazy import Frame
+
     from laser_cross_calibration.materials.base import BaseMaterial
 
 
@@ -243,9 +243,9 @@ class OpticalRay:
         copied_ray.current_direction = self.current_direction.copy()
         copied_ray.is_alive = self.is_alive
         copied_ray.media_history = deepcopy(self.media_history)
-        copied_ray.path_positions = deepcopy(self.path_positions)
-        copied_ray.path_directions = deepcopy(self.path_directions)
-        copied_ray.segment_distances = deepcopy(self.segment_distances)
+        copied_ray.path_positions = [pos.copy() for pos in self.path_positions]
+        copied_ray.path_directions = [dir.copy() for dir in self.path_directions]
+        copied_ray.segment_distances = self.segment_distances.copy()
 
         return copied_ray
 

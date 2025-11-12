@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from scipy.spatial.transform import Rotation
-
 from laser_cross_calibration.coordinate_system import Frame, Point, Vector
+from scipy.spatial.transform import Rotation
 
 
 @pytest.mark.unit

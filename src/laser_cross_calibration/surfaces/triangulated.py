@@ -11,13 +11,12 @@ from laser_cross_calibration.surfaces.base import (
     Surface,
     get_surface_color,
 )
-from laser_cross_calibration.utils import normalize
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
+    from hazy import Frame, Point
     from numpy.typing import NDArray
 
-    from laser_cross_calibration.coordinate_system import Frame, Point
     from laser_cross_calibration.tracing.ray import OpticalRay
 
 
