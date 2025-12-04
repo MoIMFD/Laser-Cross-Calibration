@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Self
 
 import numpy as np
@@ -7,6 +8,21 @@ import plotly.graph_objects as go
 
 from laser_cross_calibration.sources.base import LaserSource
 from laser_cross_calibration.tracing import OpticalRay, OpticalSystem
+
+
+@dataclass
+class PointContainer:
+    x: float
+    y: float
+    z: float
+    color: str | tuple[float, ...] = "black"
+    size: float = 3
+
+    def __len__(self) -> int:
+        return 5
+
+    def __getitem__(self, i: int):
+        return [self.x, self.y, self.z, self.color, self.size][i]
 
 
 class Scene:
@@ -58,8 +74,16 @@ class Scene:
         self.rays: list[OpticalRay] = []
         return self
 
-    def add_point(self, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> Self:
-        self.points.append((x, y, z))
+    def add_point(
+        self,
+        x: float = 0.0,
+        y: float = 0.0,
+        z: float = 0.0,
+        size: float = 3,
+        color: str | tuple[float, ...] = "black",
+    ) -> Self:
+        pc = PointContainer(x=x, y=y, z=z, color=color, size=size)
+        self.points.append(pc)
         return self
 
     def clear_points(self) -> Self:
@@ -144,7 +168,7 @@ class Scene:
             fig.add_trace(trace)
 
         if self.points:
-            x, y, z = list(zip(*self.points, strict=True))
+            x, y, z, colors, sizes = list(zip(*self.points, strict=True))
             trace = go.Scatter3d(
                 x=x,
                 y=y,
