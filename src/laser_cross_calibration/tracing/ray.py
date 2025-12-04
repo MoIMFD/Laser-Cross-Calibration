@@ -146,8 +146,8 @@ class OpticalRay:
         # Calculate refracted direction
         cos_theta_t = np.sqrt(1.0 - sin_theta_t_sq)
         local_ray.current_direction = (
-            n_ratio * local_ray.current_direction
-            + (n_ratio * cos_theta_i - cos_theta_t) * normal
+            float(n_ratio) * local_ray.current_direction
+            + float(n_ratio * cos_theta_i - cos_theta_t) * normal
         )
 
         local_ray.current_direction = local_ray.current_direction.normalize()
@@ -291,7 +291,7 @@ def line_segment_intersection(
     check_same_frame(p1, p2, p3, p4)
 
     # Convert to numpy arrays
-    p1, p2, p3, p4 = [np.array(p.coords, dtype=np.float64) for p in [p1, p2, p3, p4]]
+    p1, p2, p3, p4 = [p for p in [p1, p2, p3, p4]]
 
     # Direction vectors of the segments
     d1 = p2 - p1  # Segment 1 vector

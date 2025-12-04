@@ -198,7 +198,7 @@ class TriSurface(Surface):
         edge2 = v2 - v0
 
         # Begin calculating determinant - also used to calculate u parameter
-        h = np.cross(ray_dir, edge2)
+        h = np.cross(np.array(ray_dir), edge2)
         det = np.sum(edge1 * h, axis=1)
 
         # If determinant is near zero, ray lies in plane of triangle
@@ -208,7 +208,7 @@ class TriSurface(Surface):
             return result
 
         # Calculate distance from v0 to ray origin
-        s = ray_origin - v0
+        s = np.array(ray_origin) - v0
 
         # Calculate u parameter and test bound
         u = np.sum(s * h, axis=1) / (det + VVSMALL)
@@ -223,7 +223,7 @@ class TriSurface(Surface):
         q = np.cross(s, edge1)
 
         # Calculate v parameter and test bound
-        v = np.sum(ray_dir.coords * q, axis=1) / (det + VVSMALL)
+        v = np.sum(np.array(ray_dir) * q, axis=1) / (det + VVSMALL)
         v_mask = (v >= 0.0) & (u + v <= 1.0)
 
         # Combine masks
@@ -253,7 +253,7 @@ class TriSurface(Surface):
         # Build intersection result
         result.hit = True
         result.distance = valid_distances[closest_idx]
-        result.point = ray_origin + result.distance * ray_dir
+        result.point = ray_origin + float(result.distance) * ray_dir
         result.surface_id = self.id
         result.triangle_id = int(triangle_idx)
         result.barycentric_u = u_closest
@@ -263,19 +263,18 @@ class TriSurface(Surface):
         # Compute normal using smooth interpolation or flat triangle normal
         if self.is_smooth and self.vertex_normals is not None:
             face = self.faces[triangle_idx]
-            result.normal = self.frame.create_vector(
-                *self.interpolate_from_barycentric(
-                    self.vertex_normals[face[0]],
-                    self.vertex_normals[face[1]],
-                    self.vertex_normals[face[2]],
-                    u_closest,
-                    v_closest,
-                )
+            x, y, z = self.interpolate_from_barycentric(
+                self.vertex_normals[face[0]],
+                self.vertex_normals[face[1]],
+                self.vertex_normals[face[2]],
+                u_closest,
+                v_closest,
             )
+            result.normal = self.frame.vector(x, y, z)
             result.normal = result.normal.normalize()
         else:
             # Flat shading - use triangle normal
-            result.normal = self.triangle_normals[triangle_idx]
+            result.normal = self.frame.vector(*self.triangle_normals[triangle_idx])
 
         return result
 
@@ -284,7 +283,7 @@ class TriSurface(Surface):
     ) -> list[go.Mesh3d] | list[go.Mesh3d | go.Scatter3d]:
         import plotly.graph_objects as go
 
-        vertices = self.frame.batch_transform_global(self.vertices)
+        vertices = self.frame.batch_transform_points_global(self.vertices)
 
         # Create triangle mesh
         mesh = go.Mesh3d(

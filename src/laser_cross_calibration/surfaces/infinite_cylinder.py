@@ -101,12 +101,12 @@ class InfiniteCylinder(Surface):
 
         # Find two perpendicular vectors to the axis
         if abs(axis[0]) < 0.9:
-            u = np.cross(axis, [1, 0, 0])
+            u = axis.cross(self.axis.frame.vector([1, 0, 0]))
         else:
-            u = np.cross(axis, [0, 1, 0])
-        u = u / np.linalg.norm(u)
-        v = np.cross(axis, u)
-        v = v / np.linalg.norm(v)
+            u = axis.cross(self.axis.frame.vector([0, 1, 0]))
+        u = np.array(u.normalize())
+        v = axis.cross(u)
+        v = np.array(v.normalize())
 
         # Generate cylinder points
         # Radial component in u-v plane + axial component
@@ -115,13 +115,13 @@ class InfiniteCylinder(Surface):
 
         # Transform to world coordinates
         points = (
-            self.center[np.newaxis, np.newaxis, :]
-            + s_grid[:, :, np.newaxis] * axis[np.newaxis, np.newaxis, :]
+            np.array(self.center)[np.newaxis, np.newaxis, :]
+            + s_grid[:, :, np.newaxis] * np.array(axis)[np.newaxis, np.newaxis, :]
             + x_local[:, :, np.newaxis] * u[np.newaxis, np.newaxis, :]
             + y_local[:, :, np.newaxis] * v[np.newaxis, np.newaxis, :]
         )
 
-        points = self.center.frame.batch_transform_global(points)
+        points = self.center.frame.batch_transform_points_global(points)
 
         return [
             go.Surface(
