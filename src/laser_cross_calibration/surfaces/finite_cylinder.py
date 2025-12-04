@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from laser_cross_calibration.constants import NAN_POINT3, NAN_VECTOR3
 from laser_cross_calibration.surfaces.infinite_cylinder import InfiniteCylinder
 
 if TYPE_CHECKING:
@@ -50,8 +49,8 @@ class FiniteCylinder(InfiniteCylinder):
         if abs(axis_distance) > self.length / 2:
             result.hit = False
             result.distance = np.inf
-            result.point = NAN_POINT3
-            result.normal = NAN_VECTOR3
+            result.point = self.center.frame.point(np.nan, np.nan, np.nan)
+            result.normal = self.center.frame.vector(np.nan, np.nan, np.nan)
             result.surface_id = -1
 
         return result

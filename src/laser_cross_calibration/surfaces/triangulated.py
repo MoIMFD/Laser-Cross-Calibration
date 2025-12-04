@@ -77,9 +77,7 @@ class TriSurface(Surface):
         """Get axis-aligned bounding box for this mesh."""
         min_bounds = np.min(self.vertices, axis=0)
         max_bounds = np.max(self.vertices, axis=0)
-        return self.frame.create_point(*min_bounds), self.frame.create_point(
-            *max_bounds
-        )
+        return self.frame.point(*min_bounds), self.frame.point(*max_bounds)
 
     def _validate_mesh(self):
         """Validate mesh geometry."""
@@ -119,7 +117,7 @@ class TriSurface(Surface):
         valid_mask = norms > VSMALL
         normals[valid_mask] = normals[valid_mask] / norms[valid_mask, np.newaxis]
 
-        return [self.frame.create_vector(*normal) for normal in normals]
+        return np.asarray([self.frame.vector(*normal) for normal in normals])
 
     def _compute_vertex_normals(self) -> np.ndarray:
         """
@@ -147,7 +145,7 @@ class TriSurface(Surface):
             vertex_normals[valid_mask] / norms[valid_mask, np.newaxis]
         )
 
-        return [self.frame.create_vector(*normal) for normal in vertex_normals]
+        return np.asarray([self.frame.vector(*normal) for normal in vertex_normals])
 
     @staticmethod
     def interpolate_from_barycentric(
@@ -156,7 +154,7 @@ class TriSurface(Surface):
         v2_value: NDArray | float,
         u: float,
         v: float,
-    ) -> NDArray | float:
+    ) -> NDArray[np.floating] | float:
         """
         Interpolate values at triangle vertices using barycentric coordinates.
 

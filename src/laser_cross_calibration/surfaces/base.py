@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from hazy import Point, Vector
 
     from laser_cross_calibration.tracing.ray import OpticalRay
-    from laser_cross_calibration.types import POINT3
 
 
 def get_surface_color(surface_id: int) -> str:
@@ -133,7 +132,7 @@ class Surface(ABC):
             Intersection result with hit information
         """
 
-    def get_bounds(self) -> tuple[POINT3, POINT3] | None:
+    def get_bounds(self) -> tuple[Point, Point] | None:
         """
         Get axis-aligned bounding box for this surface.
 

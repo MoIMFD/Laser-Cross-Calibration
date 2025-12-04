@@ -8,10 +8,11 @@ from laser_cross_calibration.constants import INTERSECTION_THRESHOLD
 from laser_cross_calibration.tracing.intersection import ray_intersection
 
 if TYPE_CHECKING:
+    from hazy import Point
+
     from laser_cross_calibration.sources.base import LaserSource
     from laser_cross_calibration.tracing.optical_system import OpticalSystem
     from laser_cross_calibration.tracing.ray import OpticalRay
-    from laser_cross_calibration.types import Point
 
 
 class RayTracer:

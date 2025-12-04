@@ -2,21 +2,14 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from hazy import Frame
 
-from laser_cross_calibration import materials, sources, surfaces, tracing
-from laser_cross_calibration.constants import (
-    ORIGIN_POINT3,
-    UNIT_X_VECTOR3,
-    UNIT_Y_VECTOR3,
-    UNIT_Z_VECTOR3,
-)
+from laser_cross_calibration import materials, surfaces
 
 
-@pytest.fixture(autouse=True)
-def reset_surface_counter():
-    """Automatically reset surface ID counter after each test."""
-    yield
-    surfaces.Surface.reset_id_counter()
+@pytest.fixture
+def global_frame():
+    return Frame.root
 
 
 @pytest.fixture
@@ -34,52 +27,52 @@ def glass_bk7():
     return materials.GLASS_BK7
 
 
-@pytest.fixture(scope="function")
-def simple_ray_100():
-    return tracing.OpticalRay(
-        origin=ORIGIN_POINT3,
-        direction=UNIT_X_VECTOR3,
-    )
+# @pytest.fixture(scope="function")
+# def simple_ray_100():
+#     return tracing.OpticalRay(
+#         origin=ORIGIN_POINT3,
+#         direction=UNIT_X_VECTOR3,
+#     )
 
 
-@pytest.fixture(scope="function")
-def simple_ray_010():
-    return tracing.OpticalRay(
-        origin=ORIGIN_POINT3,
-        direction=UNIT_Y_VECTOR3,
-    )
+# @pytest.fixture(scope="function")
+# def simple_ray_010():
+#     return tracing.OpticalRay(
+#         origin=ORIGIN_POINT3,
+#         direction=UNIT_Y_VECTOR3,
+#     )
 
 
-@pytest.fixture(scope="function")
-def simple_ray_001():
-    return tracing.OpticalRay(
-        origin=ORIGIN_POINT3,
-        direction=UNIT_Z_VECTOR3,
-    )
+# @pytest.fixture(scope="function")
+# def simple_ray_001():
+#     return tracing.OpticalRay(
+#         origin=ORIGIN_POINT3,
+#         direction=UNIT_Z_VECTOR3,
+#     )
 
 
-@pytest.fixture(scope="function")
-def simple_ray_110():
-    return tracing.OpticalRay(
-        origin=ORIGIN_POINT3,
-        direction=UNIT_X_VECTOR3 + UNIT_Y_VECTOR3,
-    )
+# @pytest.fixture(scope="function")
+# def simple_ray_110():
+#     return tracing.OpticalRay(
+#         origin=ORIGIN_POINT3,
+#         direction=UNIT_X_VECTOR3 + UNIT_Y_VECTOR3,
+#     )
 
 
-@pytest.fixture(scope="function")
-def simple_ray_101():
-    return tracing.OpticalRay(
-        origin=ORIGIN_POINT3,
-        direction=UNIT_X_VECTOR3 + UNIT_Z_VECTOR3,
-    )
+# @pytest.fixture(scope="function")
+# def simple_ray_101():
+#     return tracing.OpticalRay(
+#         origin=ORIGIN_POINT3,
+#         direction=UNIT_X_VECTOR3 + UNIT_Z_VECTOR3,
+#     )
 
 
-@pytest.fixture(scope="function")
-def simple_ray_011():
-    return tracing.OpticalRay(
-        origin=ORIGIN_POINT3,
-        direction=UNIT_Y_VECTOR3 + UNIT_Z_VECTOR3,
-    )
+# @pytest.fixture(scope="function")
+# def simple_ray_011():
+#     return tracing.OpticalRay(
+#         origin=ORIGIN_POINT3,
+#         direction=UNIT_Y_VECTOR3 + UNIT_Z_VECTOR3,
+#     )
 
 
 @pytest.fixture(scope="function")
@@ -148,20 +141,20 @@ def triangle_box_surface() -> surfaces.TriSurface:
     return surfaces.TriSurface(vertices=vertices, faces=faces)
 
 
-@pytest.fixture
-def single_laser_source_x() -> sources.SingleLaserSource:
-    return sources.SingleLaserSource(origin=ORIGIN_POINT3, direction=UNIT_X_VECTOR3)
+# @pytest.fixture
+# def single_laser_source_x() -> sources.SingleLaserSource:
+#     return sources.SingleLaserSource(origin=ORIGIN_POINT3, direction=UNIT_X_VECTOR3)
 
 
-@pytest.fixture
-def dual_laser_stage_source_xy() -> sources.DualLaserStageSource:
-    return sources.DualLaserStageSource(
-        origin=ORIGIN_POINT3,
-        arm1=UNIT_X_VECTOR3,
-        arm2=UNIT_Y_VECTOR3,
-        direction1=UNIT_Y_VECTOR3,
-        direction2=UNIT_X_VECTOR3,
-    )
+# @pytest.fixture
+# def dual_laser_stage_source_xy() -> sources.DualLaserStageSource:
+#     return sources.DualLaserStageSource(
+#         origin=ORIGIN_POINT3,
+#         arm1=UNIT_X_VECTOR3,
+#         arm2=UNIT_Y_VECTOR3,
+#         direction1=UNIT_Y_VECTOR3,
+#         direction2=UNIT_X_VECTOR3,
+#     )
 
 
 @pytest.fixture(scope="session")

@@ -6,13 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 from hazy.utils import check_same_frame
 
-from laser_cross_calibration.constants import (
-    ORIGIN_POINT3,
-    UNIT_X_VECTOR3,
-    UNIT_Y_VECTOR3,
-    UNIT_Z_VECTOR3,
-    VSMALL,
-)
+from laser_cross_calibration.constants import VSMALL
 from laser_cross_calibration.materials import AIR
 from laser_cross_calibration.surfaces.base import (
     IntersectionResult,
@@ -21,7 +15,7 @@ from laser_cross_calibration.surfaces.base import (
 )
 
 if TYPE_CHECKING:
-    from hazy import Point, Vector
+    from hazy import Frame, Point, Vector
 
     from laser_cross_calibration.tracing import OpticalRay
 
@@ -101,9 +95,9 @@ class Plane(Surface):
 
         # Create two orthogonal vectors in the plane
         if abs(self.normal[0]) < 0.9:
-            u_vec = np.cross(self.normal, [1, 0, 0])
+            u_vec = np.cross(self.normal, self.normal.frame.vector([1, 0, 0]))
         else:
-            u_vec = np.cross(self.normal, [0, 1, 0])
+            u_vec = np.cross(self.normal, self.normal.frame.vector([0, 1, 0]))
         u_vec = u_vec / np.linalg.norm(u_vec)
         v_vec = np.cross(self.normal, u_vec)
 
@@ -114,7 +108,7 @@ class Plane(Surface):
             + v_vec[np.newaxis, np.newaxis, :] * v_grid[:, :, np.newaxis]
         )
 
-        points = self.point.frame.batch_transform_global(points)
+        points = self.point.frame.batch_transform_points_global(points)
 
         surface = go.Surface(
             x=points[:, :, 0],
@@ -145,33 +139,32 @@ class Plane(Surface):
 
     @classmethod
     def create_xy(
-        cls, display_size: float = 2.0, surface_id: int | None = None, **kwargs
+        cls,
+        frame: Frame,
+        display_size: float = 2.0,
+        **kwargs,
     ) -> Plane:
         return cls(
-            point=ORIGIN_POINT3,
-            normal=UNIT_Z_VECTOR3,
+            point=frame.origin,
+            normal=frame.z_axis,
             display_size=display_size,
             **kwargs,
         )
 
     @classmethod
-    def create_xz(
-        cls, display_size: float = 2.0, surface_id: int | None = None, **kwargs
-    ) -> Plane:
+    def create_xz(cls, frame: Frame, display_size: float = 2.0, **kwargs) -> Plane:
         return cls(
-            point=ORIGIN_POINT3,
-            normal=UNIT_Y_VECTOR3,
+            point=frame.origin,
+            normal=frame.y_axis,
             display_size=display_size,
             **kwargs,
         )
 
     @classmethod
-    def create_yz(
-        cls, display_size: float = 2.0, surface_id: int | None = None, **kwargs
-    ) -> Plane:
+    def create_yz(cls, frame: Frame, display_size: float = 2.0, **kwargs) -> Plane:
         return cls(
-            point=ORIGIN_POINT3,
-            normal=UNIT_X_VECTOR3,
+            point=frame.origin,
+            normal=frame.x_axis,
             display_size=display_size,
             **kwargs,
         )

@@ -230,7 +230,7 @@ class OpticalRay:
         return local_ray
 
     def globalize(self) -> OpticalRay:
-        return self.localize(frame=self.origin.frame.global_frame())
+        return self.localize(frame=self.origin.frame.root)
 
     def copy(self) -> OpticalRay:
         """Create a new OpticalRay instance as an independent copy of the current

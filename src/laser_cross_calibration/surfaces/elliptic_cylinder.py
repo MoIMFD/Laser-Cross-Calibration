@@ -139,7 +139,7 @@ class EllipticCylinder(Surface):
             + y_local[:, :, np.newaxis] * self.minor_axis[np.newaxis, np.newaxis, :]
         )
 
-        points = self.center.frame.batch_transform_global(points)
+        points = self.center.frame.batch_transform_points_global(points)
 
         return [
             go.Surface(
