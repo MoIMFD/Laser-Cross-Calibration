@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Self, Unpack
 
+import plotly.graph_objects as go
 from hazy.utils import check_same_frame
 
 from laser_cross_calibration.sources.base import LaserSource, LaserSourceTypedDict
@@ -104,3 +105,37 @@ class DualLaserStageSource(LaserSource):
             )
         self.direction2 = direction
         return self
+
+    def to_plotly(self) -> list[go.Cone | go.Scatter3d]:
+        cones = super().to_plotly()
+
+        arms: list[go.Scatter3d] = []
+        origin_global = self.origin.to_global()
+        for beam_origin in self.get_origins():
+            beam_global = beam_origin.to_global()
+            x = [origin_global.x, beam_global.x]
+            y = [origin_global.y, beam_global.y]
+            z = [origin_global.z, beam_global.z]
+            arms.append(
+                go.Scatter3d(
+                    x=x,
+                    y=y,
+                    z=z,
+                    marker={"size": 0, "color": "red"},
+                    line={"color": "red", "width": 3},
+                    showlegend=False,
+                    name="DualLaserStage Arms",
+                )
+            )
+
+        origin = go.Scatter3d(
+            x=[origin_global.x],
+            y=[origin_global.y],
+            z=[origin_global.z],
+            marker={"size": 0, "color": "red", "symbol": "square"},
+            line={"color": "red", "width": 0},
+            showlegend=False,
+            name="DualLaserStage Origin",
+        )
+
+        return cones + arms + [origin]

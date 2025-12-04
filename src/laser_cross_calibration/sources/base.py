@@ -38,7 +38,7 @@ class LaserSource(ABC):
         """
         pass
 
-    def to_plotly(self) -> list[go.Cone]:
+    def to_plotly(self) -> list[go.Cone | go.Scatter3d]:
         traces = []
         for origin, direction in zip(
             self.get_origins(), self.get_directions(), strict=False
