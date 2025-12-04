@@ -101,8 +101,6 @@ class Surface(ABC):
         material_name: Name of the surface material
     """
 
-    _id_counter: int = 0
-
     def __init__(
         self,
         info: str = "unknown",
@@ -111,8 +109,7 @@ class Surface(ABC):
         Initialize surface with identification.
 
         Args:
-            surface_id: Unique identifier for this surface (auto-assigned if None)
-            material_name: Human-readable material name
+            info: an informative string for this surface
         """
         self.info: str = info
 
@@ -144,7 +141,12 @@ class Surface(ABC):
     @abstractmethod
     def to_plotly_surface(
         self, show_normals: bool = False
-    ) -> go.Surface | list[go.Scatter3d]:
+    ) -> (
+        go.Surface
+        | list[go.Scatter3d]
+        | list[go.Mesh3d]
+        | list[go.Mesh3d | go.Scatter3d]
+    ):
         """
         Convert surface to Plotly visualization objects.
 
@@ -159,7 +161,5 @@ class Surface(ABC):
     def __repr__(self) -> str:
         """String representation of the surface."""
         return (
-            f"{self.__class__.__qualname__}("
-            f"surface_id={self.surface_id}, "
-            f"info='{self.info}')"
+            f"{self.__class__.__qualname__}(surface_id={self.id}, info='{self.info}')"
         )

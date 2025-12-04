@@ -34,6 +34,7 @@ class TriSurface(Surface):
         vertices: NDArray[np.floating],
         faces: NDArray[np.integer],
         is_smooth: bool = False,
+        info: str | None = None,
         **kwargs,
     ):
         """
@@ -64,6 +65,8 @@ class TriSurface(Surface):
 
         else:
             self.vertex_normals = None
+
+        self.info = info or f"triangulated mesh {self.id}"
 
     def scale(self, x: float = 1, y: float = 1, z: float = 1) -> TriSurface:
         self.vertices *= np.array((x, y, z))
@@ -295,7 +298,7 @@ class TriSurface(Surface):
             k=self.faces[:, 2],
             opacity=0.2,
             color=get_surface_color(self.id),
-            name=f"Triangle Mesh {self.id}",
+            name=self.info,
             showscale=False,
         )
 
@@ -332,15 +335,24 @@ class TriSurface(Surface):
         cls,
         vertices: NDArray,
         faces: NDArray,
+        frame: Frame,
+        is_smooth: bool = False,
+        info: str | None = None,
         **kwargs,
     ):
         """Create triangle surface from raw vertex and face arrays."""
 
-        return cls(vertices, faces, **kwargs)
+        return cls(
+            frame=frame, vertices=vertices, faces=faces, is_smooth=is_smooth, info=info
+        )
 
     @classmethod
     def from_stl_file(
-        cls, stl_path: str, frame: Frame, is_smooth: bool = False
+        cls,
+        stl_path: str,
+        frame: Frame,
+        is_smooth: bool = False,
+        info: str | None = None,
     ) -> TriSurface:
         """Create a TriSurface instance from an STL file."""
         try:
@@ -351,7 +363,9 @@ class TriSurface(Surface):
         vertices, faces = cls._extract_vertices_faces(
             stl_data.vectors, is_smooth=is_smooth
         )
-        return cls(frame=frame, vertices=vertices, faces=faces, is_smooth=is_smooth)
+        return cls(
+            frame=frame, vertices=vertices, faces=faces, is_smooth=is_smooth, info=info
+        )
 
     @staticmethod
     def _extract_vertices_faces(
