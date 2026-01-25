@@ -60,15 +60,18 @@ class SerialInterface:
         self._response_string = ""
         self._response_status = None
         self._response_error_msg = None
-        self._startup_complete = False
+        self._online = False
         self._running = True
+
+        # Greetings that indicate printer is ready (like Pronterface)
+        self._greetings = ("start", "marlin", "grbl ")
 
         self.connect(self.reconnect_timeout)
 
         self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
         self._reader_thread.start()
 
-        self._validate_connection()
+        self._wait_until_online()
 
     def connect(self, timeout: int):
         deadline = time.time() + timeout
@@ -148,6 +151,17 @@ class SerialInterface:
                 else:
                     self._response_string += line + "\n"
             else:
+                line_lower = line.lower()
+                # Check for greetings, ok, or temperature responses that indicate online
+                # Marlin sends "Marlin X.Y.Z" on boot, and "ok" in response to commands
+                is_online_indicator = (
+                    line_lower.startswith(self._greetings)
+                    or line_lower.startswith("ok")
+                    or "t:" in line_lower
+                )
+                if is_online_indicator and not self._online:
+                    self._online = True
+                    self._condition.notify_all()
                 if self.unsolicited_msg_callback:
                     self.unsolicited_msg_callback(line)
 
@@ -157,64 +171,55 @@ class SerialInterface:
         log_level = self.log_level_prefix_map.get(msg[:2])
         return log_level, msg[2:] if log_level else msg
 
-    def _validate_connection(self, timeout: float = 10.0):
-        """Validate connection using active polling (M105/M115).
+    def _wait_until_online(self, timeout: float = 10.0):
+        """Wait for printer to come online using active polling (Pronterface-style).
 
-        This method does not rely on fragile startup banners. Instead it
-        actively polls the device with M105 (temperature query) which Marlin
-        responds to immediately. Falls back to M115 if M105 fails.
+        Sends M105 repeatedly and monitors for valid responses (ok, T:, or
+        greeting messages). Tolerates empty lines and timing variations during
+        bootloader/startup phase.
         """
-        print(
-            Fore.YELLOW + "[SerialInterface] Validating connection..." + Style.RESET_ALL
-        )
-
-        time.sleep(0.5)
-        self._flush_input()
+        print(Fore.YELLOW + "[SerialInterface] Waiting for device..." + Style.RESET_ALL)
 
         deadline = time.time() + timeout
-        attempts = 0
-        max_m105_attempts = 3
+        empty_line_count = 0
+        max_empty_lines = 15  # Like Pronterface
 
-        while time.time() < deadline:
-            status, response = self.send_command("M105", timeout=2)
+        while time.time() < deadline and not self._online:
+            # Send M105 temperature query - Marlin always responds to this
+            self._send_raw("M105")
 
-            if status == SerialInterface.ReplyStatus.OK:
-                print(
-                    Fore.GREEN
-                    + "[SerialInterface] Device ready (via M105)"
-                    + Style.RESET_ALL
-                )
+            # Wait for response, checking periodically
+            poll_deadline = time.time() + 2.0
+            while time.time() < poll_deadline and not self._online:
                 with self._lock:
-                    self._startup_complete = True
-                return True
+                    # Check if we got a valid response
+                    if self._online:
+                        break
+                    self._condition.wait(timeout=0.1)
 
-            attempts += 1
+            if self._online:
+                break
 
-            if attempts >= max_m105_attempts:
-                status, response = self.send_command("M115", timeout=3)
-                if status == SerialInterface.ReplyStatus.OK and (
-                    "FIRMWARE_NAME" in response or "Marlin" in response
-                ):
-                    print(
-                        Fore.GREEN
-                        + "[SerialInterface] Device ready (via M115)"
-                        + Style.RESET_ALL
-                    )
-                    with self._lock:
-                        self._startup_complete = True
-                    return True
-                attempts = 0
+            empty_line_count += 1
+            if empty_line_count >= max_empty_lines:
+                empty_line_count = 0
 
-            time.sleep(0.3)
+        if self._online:
+            print(Fore.GREEN + "[SerialInterface] Device ready" + Style.RESET_ALL)
+        else:
+            print(
+                Fore.RED + "[SerialInterface] Device not responding" + Style.RESET_ALL
+            )
 
-        print(Fore.RED + "[SerialInterface] Device not responding" + Style.RESET_ALL)
-        return False
-
-    def _flush_input(self):
-        """Flush any pending input data from the serial buffer."""
+    def _send_raw(self, cmd: str):
+        """Send a command without waiting for response (for startup polling)."""
         if self.serial and self.serial.is_open:
-            with contextlib.suppress(serial.SerialException):
-                self.serial.reset_input_buffer()
+            cmd = cmd.strip() + "\n"
+            try:
+                self.serial.write(cmd.encode("ascii"))
+                self.serial.flush()
+            except (serial.SerialException, OSError):
+                pass
 
     def send_command(self, cmd: str, timeout: int = 30) -> tuple[ReplyStatus, str]:
         with self._lock:
@@ -243,9 +248,11 @@ class SerialInterface:
                 self._response_status is None
                 or self._response_status == SerialInterface.ReplyStatus.BUSY
             ):
+                # Reset timeout on BUSY responses (like Pronterface)
                 if self._response_status == SerialInterface.ReplyStatus.BUSY:
                     end_time = time.time() + timeout
                     self._response_status = None
+
                 remaining = end_time - time.time()
                 if remaining <= 0:
                     self._waiting_for_response = False
