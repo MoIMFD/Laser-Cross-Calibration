@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import platform
 import threading
 import time
@@ -67,7 +68,7 @@ class SerialInterface:
         self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
         self._reader_thread.start()
 
-        self._wait_for_startup()
+        self._validate_connection()
 
     def connect(self, timeout: int):
         deadline = time.time() + timeout
@@ -147,9 +148,6 @@ class SerialInterface:
                 else:
                     self._response_string += line + "\n"
             else:
-                if line.lower().startswith("start") or line.startswith("Marlin"):
-                    self._startup_complete = True
-                    self._condition.notify_all()
                 if self.unsolicited_msg_callback:
                     self.unsolicited_msg_callback(line)
 
@@ -159,39 +157,66 @@ class SerialInterface:
         log_level = self.log_level_prefix_map.get(msg[:2])
         return log_level, msg[2:] if log_level else msg
 
-    def _wait_for_startup(self, timeout=3):
-        with self._lock:
-            deadline = time.time() + timeout
-            while not self._startup_complete:
-                remaining = deadline - time.time()
-                if remaining <= 0:
-                    print(
-                        Fore.YELLOW + "[SerialInterface] No startup banner received, "
-                        "checking if device is ready..." + Style.RESET_ALL
-                    )
-                    break
-                self._condition.wait(timeout=remaining)
+    def _validate_connection(self, timeout: float = 10.0):
+        """Validate connection using active polling (M105/M115).
 
-        if not self._startup_complete:
-            status, response = self.send_command("M115", timeout=2)
+        This method does not rely on fragile startup banners. Instead it
+        actively polls the device with M105 (temperature query) which Marlin
+        responds to immediately. Falls back to M115 if M105 fails.
+        """
+        print(
+            Fore.YELLOW + "[SerialInterface] Validating connection..." + Style.RESET_ALL
+        )
+
+        time.sleep(0.5)
+        self._flush_input()
+
+        deadline = time.time() + timeout
+        attempts = 0
+        max_m105_attempts = 3
+
+        while time.time() < deadline:
+            status, response = self.send_command("M105", timeout=2)
+
             if status == SerialInterface.ReplyStatus.OK:
                 print(
                     Fore.GREEN
-                    + "[SerialInterface] Device ready (via M115)"
+                    + "[SerialInterface] Device ready (via M105)"
                     + Style.RESET_ALL
                 )
                 with self._lock:
                     self._startup_complete = True
-            else:
-                print(
-                    Fore.RED
-                    + "[SerialInterface] Device not responding"
-                    + Style.RESET_ALL
-                )
-        else:
-            print(Fore.GREEN + "[SerialInterface] Device ready" + Style.RESET_ALL)
+                return True
 
-    def send_command(self, cmd: str, timeout: int = 2) -> tuple[ReplyStatus, str]:
+            attempts += 1
+
+            if attempts >= max_m105_attempts:
+                status, response = self.send_command("M115", timeout=3)
+                if status == SerialInterface.ReplyStatus.OK and (
+                    "FIRMWARE_NAME" in response or "Marlin" in response
+                ):
+                    print(
+                        Fore.GREEN
+                        + "[SerialInterface] Device ready (via M115)"
+                        + Style.RESET_ALL
+                    )
+                    with self._lock:
+                        self._startup_complete = True
+                    return True
+                attempts = 0
+
+            time.sleep(0.3)
+
+        print(Fore.RED + "[SerialInterface] Device not responding" + Style.RESET_ALL)
+        return False
+
+    def _flush_input(self):
+        """Flush any pending input data from the serial buffer."""
+        if self.serial and self.serial.is_open:
+            with contextlib.suppress(serial.SerialException):
+                self.serial.reset_input_buffer()
+
+    def send_command(self, cmd: str, timeout: int = 30) -> tuple[ReplyStatus, str]:
         with self._lock:
             if not self.serial or not self.serial.is_open:
                 return SerialInterface.ReplyStatus.ERROR, "Serial not open"
@@ -214,7 +239,13 @@ class SerialInterface:
             self.serial.flush()
 
             end_time = time.time() + timeout
-            while self._response_status is None:
+            while (
+                self._response_status is None
+                or self._response_status == SerialInterface.ReplyStatus.BUSY
+            ):
+                if self._response_status == SerialInterface.ReplyStatus.BUSY:
+                    end_time = time.time() + timeout
+                    self._response_status = None
                 remaining = end_time - time.time()
                 if remaining <= 0:
                     self._waiting_for_response = False
