@@ -34,9 +34,6 @@ dev = [
 [tool.uv.workspace]
 members = ["lcc-control-gui"]
 
-[tool.uv.sources]
-hazy-frames = { git = "https://github.com/Littie28/hazy-frames.git" }
-
 [tool.ruff]
 line-length = 88
 exclude = ["docs"]

@@ -491,10 +491,14 @@ wheels = [
 [[package]]
 name = "hazy-frames"
 version = "0.1.0"
-source = { git = "https://github.com/Littie28/hazy-frames.git#e5bddb81e27a6e7b225aa12dc8ced482ecc07d22" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/11/51/a8d8fa9c671e976b91657d11c47d533e9086bcda317a2b2d7216722d6fba/hazy_frames-0.1.0.tar.gz", hash = "sha256:3f90386365677706feb69b08048a60435b79f0fea8410911e2a6c4298652bd13", size = 130985, upload-time = "2026-01-23T09:35:08.59Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/90/89/d8aac90941c32de9a97821db9920f6d72d0009ad0bfc793034c3596952cc/hazy_frames-0.1.0-py3-none-any.whl", hash = "sha256:f947502a31ae9d57c9669eeef82eb7b7fce235aab5881898f1ce312337f6636d", size = 15818, upload-time = "2026-01-23T09:35:04.223Z" },
 ]
 
 [[package]]
@@ -1013,7 +1017,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "hazy-frames", git = "https://github.com/Littie28/hazy-frames.git" },
+    { name = "hazy-frames" },
     { name = "matplotlib", specifier = ">=3.10.3" },
     { name = "mermaid-py", marker = "extra == 'examples'", specifier = ">=0.8.0" },
     { name = "numpy", specifier = ">=2.3.1" },
@@ -1057,7 +1061,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "colorama", specifier = ">=0.4.6" },
-    { name = "pyserial", specifier = ">=3.5" },
+    { name = "pyserial", specifier = ">=3.4,<3.5" },
     { name = "pyside6", specifier = "==6.9.2" },
 ]
 
@@ -1617,11 +1621,11 @@ wheels = [
 
 [[package]]
 name = "pyserial"
-version = "3.5"
+version = "3.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1e/7d/ae3f0a63f41e4d2f6cb66a5b57197850f919f59e558159a4dd3a818f5082/pyserial-3.5.tar.gz", hash = "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb", size = 159125, upload-time = "2020-11-23T03:59:15.045Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/74/11b04703ec416717b247d789103277269d567db575d2fd88f25d9767fe3d/pyserial-3.4.tar.gz", hash = "sha256:6e2d401fdee0eab996cf734e67773a0143b932772ca8b42451440cfed942c627", size = 151657, upload-time = "2017-07-23T21:10:04.368Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/bc/587a445451b253b285629263eb51c2d8e9bcea4fc97826266d186f96f558/pyserial-3.5-py2.py3-none-any.whl", hash = "sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0", size = 90585, upload-time = "2020-11-23T03:59:13.41Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/e4/2a744dd9e3be04a0c0907414e2a01a7c88bb3915cbe3c8cc06e209f59c30/pyserial-3.4-py2.py3-none-any.whl", hash = "sha256:e0770fadba80c31013896c7e6ef703f72e7834965954a78e71a3049488d4d7d8", size = 193717, upload-time = "2017-07-23T21:10:01.982Z" },
 ]
 
 [[package]]
