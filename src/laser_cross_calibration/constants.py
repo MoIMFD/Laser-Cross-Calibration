@@ -1,3 +1,5 @@
-VSMALL = 1e-8
-VVSMALL = 1e-12  # For preventing division by zero
-INTERSECTION_THRESHOLD = 1e-4
+from __future__ import annotations
+
+VSMALL: float = 1e-8
+VVSMALL: float = 1e-12  # For preventing division by zero
+INTERSECTION_THRESHOLD: float = 1e-4

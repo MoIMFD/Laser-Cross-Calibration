@@ -1,21 +1,3 @@
-# system tools
-.envrc
-.direnv/
-
-# knowledge base
-CLAUDE.md
-CLAUDE.local.md
-knowledge-base
-
-# example data
-example-data/
-
-# private
-/private/
-
-# outputs
-/outputs/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -23,6 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
+
+# platformio files
+.platformio
 
 # Distribution / packaging
 .Python
