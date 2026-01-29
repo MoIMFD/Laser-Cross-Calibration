@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from laser_cross_calibration import (
     constants,
+    geometry,
     materials,
     optimization,
     sources,
@@ -12,12 +13,13 @@ from laser_cross_calibration import (
 )
 
 __all__ = [
+    "constants",
+    "geometry",
     "materials",
-    "sources",
     "optimization",
+    "sources",
     "surfaces",
     "tracing",
-    "visualization",
-    "constants",
     "utils",
+    "visualization",
 ]
