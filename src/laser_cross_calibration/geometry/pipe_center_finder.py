@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union
 
 import numpy as np
+import uncertainties.unumpy
 from numpy.polynomial import Polynomial
+from scipy.optimize import curve_fit
 from uncertainties import correlated_values, ufloat
 from uncertainties import unumpy as unp
 
@@ -103,14 +105,16 @@ class PipeCenterFinder:
         >>> print(finder.summary())
     """
 
-    def __init__(self, points: NDArray) -> None:
+    def __init__(self, points: NDArray, uncertainty: float = 0.0) -> None:
         """Initialize the pipe center finder.
 
         Args:
             points: Array of shape (N, 3) containing chord endpoint coordinates.
                 Each row is [x, y, z]. Points at the same z form chord pairs.
         """
-        self.points = points
+        self.points = uncertainties.unumpy.uarray(
+            points, np.ones_like(points) * uncertainty
+        )
         self.geometry: PipeGeometry | None = None
         self.midpoint_line: MidpointLine | None = None
 
@@ -123,13 +127,16 @@ class PipeCenterFinder:
                 - lengths: chord length at each z
                 - midpoints: (x, y) midpoint at each z
         """
-        z_values = np.unique(self.points[:, 2])
+        z_values = np.unique(uncertainties.unumpy.nominal_values(self.points)[:, 2])
         lengths = []
         midpoints = []
 
         for z in z_values:
-            pts = self.points[self.points[:, 2] == z][:, :2]
-            lengths.append(np.linalg.norm(pts[1] - pts[0]))
+            pts = self.points[
+                uncertainties.unumpy.nominal_values(self.points)[:, 2] == z
+            ][:, :2]
+            distance = pts[1] - pts[0]
+            lengths.append((distance[0] ** 2 + distance[1] ** 2) ** 0.5)
             midpoints.append(pts.mean(axis=0))
 
         return z_values, np.array(lengths), np.array(midpoints)
@@ -152,8 +159,17 @@ class PipeCenterFinder:
         Returns:
             Tuple of (z0, a, b) with uncertainties.
         """
-        coeffs, cov = np.polyfit(z, L**2, deg=2, cov=True)
-        c2, c1, c0 = correlated_values(coeffs, cov)
+
+        def polynom(z, c0, c1, c2):
+            return c0 + c1 * z + c2 * z**2
+
+        ydata = uncertainties.unumpy.nominal_values(L**2)
+        yerr = uncertainties.unumpy.std_devs(L**2)
+
+        popt, pcov = curve_fit(
+            polynom, xdata=z, ydata=ydata, sigma=yerr, absolute_sigma=True
+        )
+        c0, c1, c2 = correlated_values(popt, pcov)
 
         p = Polynomial([c0, c1, c2])
         z0 = p.deriv().roots().item()
@@ -169,82 +185,71 @@ class PipeCenterFinder:
     def _fit_alpha(
         self, z: NDArray, L: NDArray, z0: UFloat, a: UFloat, b: UFloat
     ) -> UFloat:
-        """Fit perspective coefficient given ellipse parameters.
+        """Fit perspective coefficient with uncertainty propagation."""
 
-        The model is:
-            observed = true * (1 + alpha * (z - z0))
+        dz = z - z0  # array of ufloats (z0 uncertainty propagates)
 
-        Args:
-            z: Array of z coordinates.
-            L: Array of observed chord lengths.
-            z0: Fitted center z position.
-            a: Fitted semi-axis a.
-            b: Fitted semi-axis b.
+        # Use ufloat-compatible math
+        true_L = 2 * a * (1 - (dz / b) ** 2) ** 0.5  # array of ufloats
 
-        Returns:
-            Perspective coefficient alpha with uncertainty.
-        """
-        z0_nom = z0.nominal_value if hasattr(z0, "nominal_value") else z0
-        a_nom = a.nominal_value if hasattr(a, "nominal_value") else a
-        b_nom = b.nominal_value if hasattr(b, "nominal_value") else b
+        # ratio is now array of ufloats with propagated uncertainty from z0, a, b, and L
+        ratio = L / true_L - 1
 
-        dz = z - z0_nom
-
-        # True chord length from ellipse geometry
-        arg = np.clip(1 - (dz / b_nom) ** 2, 0, 1)
-        true_L = 2 * a_nom * np.sqrt(arg)
-
-        # Ratio: L_obs / L_true = 1 + alpha * dz
-        valid = (true_L > 1e-6) & (np.abs(dz) > 1e-6)
+        # Filter valid points
+        dz_nom = unp.nominal_values(dz)
+        true_L_nom = unp.nominal_values(true_L)
+        valid = (true_L_nom > 1e-6) & (np.abs(dz_nom) > 1e-6)
 
         if valid.sum() < 2:
             return ufloat(0.0, 0.0)
 
-        ratio = L[valid] / true_L[valid] - 1
+        # Extract for fitting
+        ratio_valid = ratio[valid]
         dz_valid = dz[valid]
 
-        # Linear regression through origin: ratio = alpha * dz
-        alpha_nom = np.dot(dz_valid, ratio) / np.dot(dz_valid, dz_valid)
+        ydata = unp.nominal_values(ratio_valid)
+        yerr = unp.std_devs(ratio_valid)
+        xdata = unp.nominal_values(dz_valid)
 
-        # Uncertainty from residuals
-        residuals = ratio - alpha_nom * dz_valid
-        n = len(dz_valid)
-        if n > 1:
-            var_residuals = np.sum(residuals**2) / (n - 1)
-            var_alpha = var_residuals / np.dot(dz_valid, dz_valid)
-            alpha_std = np.sqrt(var_alpha)
-        else:
-            alpha_std = 0.0
+        # Linear through origin: ratio = alpha * dz
+        def model(x, alpha):
+            return alpha * x
 
-        return ufloat(alpha_nom, alpha_std)
+        popt, pcov = curve_fit(model, xdata, ydata, sigma=yerr, absolute_sigma=True)
+        alpha = ufloat(popt[0], np.sqrt(pcov[0, 0]))
+
+        return alpha
 
     def _fit_midpoint_line(self, z: NDArray, midpoints: NDArray) -> MidpointLine:
         """Fit line through chord midpoints with uncertainties.
 
         Args:
             z: Array of z coordinates.
-            midpoints: Array of (x, y) midpoints.
+            midpoints: Array of (x, y) midpoints, can be ufloats.
 
         Returns:
             MidpointLine with slope and intercept including uncertainties.
         """
-        n = len(z)
-        A = np.column_stack([z, np.ones_like(z)])
-        ATA_inv = np.linalg.inv(A.T @ A)
+        # Extract nominal values and uncertainties
+        x_nom = unp.nominal_values(midpoints[:, 0])
+        y_nom = unp.nominal_values(midpoints[:, 1])
+        x_err = unp.std_devs(midpoints[:, 0])
+        y_err = unp.std_devs(midpoints[:, 1])
+
+        # Handle zero uncertainties (replace with small value or use unweighted)
+        x_err = np.where(x_err > 0, x_err, 1e-10)
+        y_err = np.where(y_err > 0, y_err, 1e-10)
+
+        def line(z, slope, intercept):
+            return slope * z + intercept
 
         # Fit x(z)
-        params_x = np.linalg.lstsq(A, midpoints[:, 0], rcond=None)[0]
-        res_x = midpoints[:, 0] - A @ params_x
-        var_x = np.sum(res_x**2) / (n - 2) if n > 2 else 0
-        cov_x = ATA_inv * var_x
-        slope_x, intercept_x = correlated_values(params_x, cov_x)
+        popt_x, pcov_x = curve_fit(line, z, x_nom, sigma=x_err, absolute_sigma=True)
+        slope_x, intercept_x = correlated_values(popt_x, pcov_x)
 
         # Fit y(z)
-        params_y = np.linalg.lstsq(A, midpoints[:, 1], rcond=None)[0]
-        res_y = midpoints[:, 1] - A @ params_y
-        var_y = np.sum(res_y**2) / (n - 2) if n > 2 else 0
-        cov_y = ATA_inv * var_y
-        slope_y, intercept_y = correlated_values(params_y, cov_y)
+        popt_y, pcov_y = curve_fit(line, z, y_nom, sigma=y_err, absolute_sigma=True)
+        slope_y, intercept_y = correlated_values(popt_y, pcov_y)
 
         return MidpointLine(
             slope=np.array([slope_x, slope_y]),
@@ -340,9 +345,15 @@ class PipeCenterFinder:
             z.max() + 0.1 * (z.max() - z.min()),
             100,
         )
-        L_fit = 2 * g.a * np.sqrt(np.clip(1 - ((z_fit - g.z0) / g.b) ** 2, 0, 1))
+        L_fit = 2 * g.a * (1 - ((z_fit - g.z0) / g.b) ** 2) ** 0.5
 
-        ax1.scatter(z, L**2, s=80, c="blue", label="Observed L^2")
+        ax1.scatter(
+            z,
+            uncertainties.unumpy.nominal_values(L**2),
+            s=80,
+            c="blue",
+            label="Observed L^2",
+        )
         ax1.plot(z_fit, L_fit**2, "g-", linewidth=2, label="Fitted parabola")
         ax1.axvline(g.z0, color="red", linestyle="--", label=f"z0 = {self.geometry.z0}")
         ax1.set_xlabel("z (mm)")
@@ -352,16 +363,16 @@ class PipeCenterFinder:
 
         # Right: image space
         ax2.scatter(
-            self.points[:, 0],
-            self.points[:, 1],
-            c=self.points[:, 2],
+            uncertainties.unumpy.nominal_values(self.points[:, 0]),
+            uncertainties.unumpy.nominal_values(self.points[:, 1]),
+            c=uncertainties.unumpy.nominal_values(self.points[:, 2]),
             cmap="coolwarm",
             s=80,
             label="Endpoints",
         )
         ax2.scatter(
-            midpoints[:, 0],
-            midpoints[:, 1],
+            uncertainties.unumpy.nominal_values(midpoints[:, 0]),
+            uncertainties.unumpy.nominal_values(midpoints[:, 1]),
             c=z,
             cmap="coolwarm",
             s=60,
