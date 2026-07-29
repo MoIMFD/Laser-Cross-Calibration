@@ -80,18 +80,18 @@ def line_segment_intersection(
     t = (a * e - b * d) / denom
 
     if not (0 <= s <= 1 and 0 <= t <= 1):
-        return False, np.array([np.nan, np.nan, np.nan])
+        return False, None
 
     point1 = p1 + s * d1
     point2 = p3 + t * d2
 
     distance = np.linalg.norm(point2 - point1)
 
+    intersection_point = point1 + (point2 - point1) * 0.5
     if distance < threshold:
-        intersection_point = point1 + (point1 - point2) * 0.5
         return True, intersection_point
     else:
-        return False, None
+        return False, intersection_point
 
 
 def ray_intersection(

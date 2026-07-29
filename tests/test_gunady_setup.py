@@ -13,12 +13,16 @@ Reference: Gunady et al., "Laser Cross-Calibration for Dimensional Metrology"
 from __future__ import annotations
 
 from math import cos, isclose, sin, tan
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 from scipy.stats import linregress
 
 import laser_cross_calibration as lcc
+
+if TYPE_CHECKING:
+    from hazy import Frame
 
 
 def calculate_expected_calibration_ratio(
@@ -60,7 +64,7 @@ def calculate_expected_calibration_ratio(
 
 
 @pytest.fixture
-def gunady_optical_system():
+def gunady_optical_system(frame: Frame):
     """Create optical system matching Gunady et al. experimental setup.
 
     Setup:
@@ -72,8 +76,8 @@ def gunady_optical_system():
 
     front_interface = lcc.tracing.OpticalInterface(
         geometry=lcc.surfaces.Plane(
-            point=lcc.constants.ORIGIN_POINT3,
-            normal=-lcc.constants.UNIT_Y_VECTOR3,
+            point=frame.origin,
+            normal=-frame.y_axis,
         ),
         material_pre=lcc.materials.AIR,
         material_post=lcc.materials.GLASS_FUSED_SILICA,
@@ -82,8 +86,8 @@ def gunady_optical_system():
 
     back_interface = lcc.tracing.OpticalInterface(
         geometry=lcc.surfaces.Plane(
-            point=lcc.constants.UNIT_Y_VECTOR3 * 0.05,
-            normal=lcc.constants.UNIT_Y_VECTOR3,
+            point=frame.origin + frame.y_axis * 0.05,
+            normal=frame.y_axis,
         ),
         material_pre=lcc.materials.GLASS_FUSED_SILICA,
         material_post=lcc.materials.WATER,
@@ -94,7 +98,7 @@ def gunady_optical_system():
 
 
 @pytest.fixture
-def gunady_laser_source():
+def gunady_laser_source(frame: Frame):
     """Create dual laser source matching Gunady et al. configuration.
 
     Configuration:
@@ -108,11 +112,11 @@ def gunady_laser_source():
     angle_2 = np.deg2rad(12.6)
 
     source = lcc.sources.DualLaserStageSource(
-        origin=lcc.constants.ORIGIN_POINT3 - lcc.constants.UNIT_Y_VECTOR3 * 0.3,
-        arm1=lcc.constants.UNIT_X_VECTOR3 * arm_length,
-        arm2=-lcc.constants.UNIT_X_VECTOR3 * arm_length,
-        direction1=np.array([-sin(angle_1), cos(angle_1), 0.0]) * 0.1,
-        direction2=np.array([sin(angle_2), cos(angle_2), 0.0]) * 0.1,
+        origin=frame.origin - frame.y_axis * 0.3,
+        arm1=frame.x_axis * arm_length,
+        arm2=-frame.x_axis * arm_length,
+        direction1=frame.vector(-sin(angle_1), cos(angle_1), 0.0) * 0.1,
+        direction2=frame.vector(sin(angle_2), cos(angle_2), 0.0) * 0.1,
     )
 
     return source

@@ -46,6 +46,7 @@ class SingleLaserSource(LaserSource):
                 f"expected {self.origin.frame} but got {origin.frame}"
             )
         self.origin = origin
+        return self
 
     def get_origins(self) -> list[Point]:
         return [self.origin]
