@@ -180,7 +180,13 @@ class SerialInterface:
                     char = ser.read(1).decode("ascii", errors="ignore")
                     if char in ["\n", "\r"]:
                         if len(buffer) > 0:
-                            self._handle_line(buffer)
+                            try:
+                                self._handle_line(buffer)
+                            except Exception as e:
+                                print(
+                                    f"{Fore.MAGENTA}[SerialInterface] Error handling "
+                                    f"line {buffer!r}: {e}{Style.RESET_ALL}"
+                                )
                             buffer = ""
                     else:
                         buffer += char
@@ -255,7 +261,7 @@ class SerialInterface:
             )
         if "busy:" in line_lower:
             return SerialInterface.ClassifiedLine(
-                line, SerialInterface.LineKind.STATUS_BUSY
+                line, SerialInterface.LineKind.STATUS_BUSY, is_online_signal=True
             )
         if line_lower.startswith("error"):
             parts = line.split(":", 1)
@@ -264,6 +270,7 @@ class SerialInterface:
                 line,
                 SerialInterface.LineKind.STATUS_ERROR,
                 error_detail=detail,
+                is_online_signal=True,
                 is_halt_signal="printer halted" in line_lower,
             )
 

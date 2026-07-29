@@ -96,16 +96,19 @@ class TestClassifyLine:
     def test_marlin_echo_busy_processing(self, serial_interface):
         c = serial_interface._classify_line("echo:busy: processing")
         assert c.kind == SerialInterface.LineKind.STATUS_BUSY
+        assert c.is_online_signal is True
 
     def test_marlin_echo_busy_paused_for_user(self, serial_interface):
         c = serial_interface._classify_line("echo:busy: paused for user")
         assert c.kind == SerialInterface.LineKind.STATUS_BUSY
+        assert c.is_online_signal is True
 
     def test_error_response(self, serial_interface):
         c = serial_interface._classify_line("error:Invalid command")
         assert c.kind == SerialInterface.LineKind.STATUS_ERROR
         assert c.error_detail == "Invalid command"
         assert c.is_halt_signal is False
+        assert c.is_online_signal is True
 
     def test_halt_message(self, serial_interface):
         c = serial_interface._classify_line("Error:Printer halted. kill() called!")
@@ -438,6 +441,31 @@ class TestReaderLoopIteration:
 
         serial_interface._handle_line.assert_called_once_with("ok")
         assert buffer == ""
+
+    def test_handle_line_exception_is_isolated_from_connection_handling(self, mocker):
+        # A bug in classify/dispatch must not be mistaken for a lost
+        # connection - it should be logged and the reader kept running,
+        # not trigger a reconnect.
+        serial_interface = _new_interface()
+        serial_interface._connection_status = ConnectionStatus.ONLINE
+        mock_ser = MagicMock()
+        mock_ser.is_open = True
+        type(mock_ser).in_waiting = mocker.PropertyMock(side_effect=[1, 1])
+        mock_ser.read.side_effect = [b"x", b"\n"]
+        serial_interface.serial = mock_ser
+        serial_interface._handle_line = Mock(side_effect=RuntimeError("boom"))
+        serial_interface.connect = Mock()
+        serial_interface._trigger_online_handshake = Mock()
+
+        buffer = ""
+        buffer = serial_interface._reader_loop_iteration(buffer)
+        buffer = serial_interface._reader_loop_iteration(buffer)
+
+        assert buffer == ""
+        assert serial_interface._connection_status == ConnectionStatus.ONLINE
+        assert serial_interface.serial is mock_ser
+        serial_interface.connect.assert_not_called()
+        serial_interface._trigger_online_handshake.assert_not_called()
 
     def test_exception_sets_disconnected_and_nulls_serial(self, mocker):
         serial_interface = _new_interface()
