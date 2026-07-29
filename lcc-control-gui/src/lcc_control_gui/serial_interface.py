@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import platform
 import threading
 import time
@@ -113,9 +112,8 @@ class SerialInterface:
                     time.sleep(0.001)
             except (serial.SerialException, OSError, TypeError) as e:
                 print(
-                    Fore.MAGENTA
-                    + f"[SerialInterface] Lost connection: {e}"
-                    + Style.RESET_ALL
+                    f"{Fore.MAGENTA}[SerialInterface] Lost connection: {e}"
+                    f"{Style.RESET_ALL}"
                 )
                 try:
                     if self.serial is not None and self.serial.is_open:
@@ -178,7 +176,7 @@ class SerialInterface:
         greeting messages). Tolerates empty lines and timing variations during
         bootloader/startup phase.
         """
-        print(Fore.YELLOW + "[SerialInterface] Waiting for device..." + Style.RESET_ALL)
+        print(f"{Fore.YELLOW}[SerialInterface] Waiting for device...{Style.RESET_ALL}")
 
         deadline = time.time() + timeout
         empty_line_count = 0
@@ -205,11 +203,9 @@ class SerialInterface:
                 empty_line_count = 0
 
         if self._online:
-            print(Fore.GREEN + "[SerialInterface] Device ready" + Style.RESET_ALL)
+            print(f"{Fore.GREEN}[SerialInterface] Device ready{Style.RESET_ALL}")
         else:
-            print(
-                Fore.RED + "[SerialInterface] Device not responding" + Style.RESET_ALL
-            )
+            print(f"{Fore.RED}[SerialInterface] Device not responding{Style.RESET_ALL}")
 
     def _send_raw(self, cmd: str):
         """Send a command without waiting for response (for startup polling)."""
@@ -233,9 +229,8 @@ class SerialInterface:
 
             cmd = cmd.strip() + "\n"
             print(
-                Fore.CYAN
-                + f"[{self.__class__.__qualname__}] TX: {cmd.strip()}"
-                + Style.RESET_ALL
+                f"{Fore.CYAN}[{self.__class__.__qualname__}] TX: {cmd.strip()}"
+                f"{Style.RESET_ALL}"
             )
             if self.command_msg_callback:
                 self.command_msg_callback(cmd, None, "")
@@ -258,9 +253,9 @@ class SerialInterface:
                     self._waiting_for_response = False
                     msg = (
                         f"[{self.__class__.__qualname__}] Command "
-                        + "timeout, device didn't reply"
+                        "timeout, device didn't reply"
                     )
-                    print(Fore.MAGENTA + msg + Style.RESET_ALL)
+                    print(f"{Fore.MAGENTA}{msg}{Style.RESET_ALL}")
                     return (
                         SerialInterface.ReplyStatus.TIMEOUT,
                         self._response_string,
@@ -278,9 +273,8 @@ class SerialInterface:
 
     def close(self):
         print(
-            Fore.MAGENTA
-            + f"[SerialInterface] Disconnecting from port '{self.port}'..."
-            + Style.RESET_ALL
+            f"{Fore.MAGENTA}[SerialInterface] Disconnecting from port '{self.port}'..."
+            f"{Style.RESET_ALL}"
         )
         self._running = False
         if self.serial and self.serial.is_open:
@@ -288,7 +282,7 @@ class SerialInterface:
         if self._reader_thread and self._reader_thread.is_alive():
             self._reader_thread.join(timeout=1.0)
         print(
-            Fore.GREEN + "[SerialInterface] Disconnected successfully" + Style.RESET_ALL
+            f"{Fore.GREEN}[SerialInterface] Disconnected successfully{Style.RESET_ALL}"
         )
 
 
@@ -300,7 +294,7 @@ def scan_ports():
         list: List of available serial port names
     """
     print(
-        Fore.WHITE + "[SerialInterface] Scanning for serial ports..." + Style.RESET_ALL
+        f"{Fore.WHITE}[SerialInterface] Scanning for serial ports...{Style.RESET_ALL}"
     )
 
     # Get a list of all port objects
