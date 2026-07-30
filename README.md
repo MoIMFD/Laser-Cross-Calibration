@@ -48,8 +48,7 @@ uv sync --extra examples
 
 Jupyter notebook tutorials are provided in `examples/`:
 
-- **`introduction-tutorial.ipynb`** -- Getting started with the ray tracing framework
-- **`laser-cross-stage.ipynb`** -- Full dual-laser stage setup with optimization
+![Surface normal visualization in Blender](assets/screenshot-blender-normals.png)
 
 ## Development
 
