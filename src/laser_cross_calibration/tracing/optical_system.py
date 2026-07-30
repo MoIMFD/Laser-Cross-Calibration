@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from laser_cross_calibration.constants import SELF_INTERSECTION_EPSILON
 from laser_cross_calibration.materials import AIR
 
 if TYPE_CHECKING:
@@ -43,7 +44,7 @@ class OpticalSystem:
         self.interfaces.append(interface)
 
     def find_next_intersection(
-        self, ray: OpticalRay
+        self, ray: OpticalRay, last_interface: OpticalInterface | None = None
     ) -> tuple[OpticalInterface | None, IntersectionResult | None]:
         """
         Find closest intersection with any interface.
@@ -52,6 +53,14 @@ class OpticalSystem:
 
         Args:
             ray: Ray to test against all interfaces
+            last_interface: The interface the ray was just refracted/reflected
+                off of, if any. Hits on this same interface closer than
+                SELF_INTERSECTION_EPSILON are ignored, since they are almost
+                always spurious self-intersections caused by floating-point
+                error rather than a real second surface (see
+                tests/test_trisurface_self_intersection.py). A genuine re-hit
+                of the same interface further along the ray (e.g. the far
+                wall of a tube using the same OpticalInterface) is unaffected.
 
         Returns:
             Tuple of (closest_interface, intersection_result) or (None, None)
@@ -62,11 +71,16 @@ class OpticalSystem:
 
         for interface in self.interfaces:
             intersection = interface.intersect(ray)
+            if intersection is None or not intersection.hit:
+                continue
+
             if (
-                intersection is not None
-                and intersection.hit
-                and intersection.distance < closest_distance
+                interface is last_interface
+                and intersection.distance < SELF_INTERSECTION_EPSILON
             ):
+                continue
+
+            if intersection.distance < closest_distance:
                 closest_distance = intersection.distance
                 closest_interface = interface
                 closest_intersection = intersection
@@ -94,11 +108,14 @@ class OpticalSystem:
             The same ray object after propagation (modified in-place)
         """
         iteration = 0
+        last_interface: OpticalInterface | None = None
 
         while ray.is_alive and iteration < max_bounces:
             iteration += 1
 
-            interface, intersection = self.find_next_intersection(ray)
+            interface, intersection = self.find_next_intersection(
+                ray, last_interface=last_interface
+            )
 
             if interface is None:
                 ray.propagate(self.final_propagation_distance, current_medium)
@@ -126,6 +143,7 @@ class OpticalSystem:
 
                 if success:
                     current_medium = next_medium
+                last_interface = interface
         ray.propagate(self.final_propagation_distance, medium=current_medium)
         return ray
 
