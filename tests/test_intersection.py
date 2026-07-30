@@ -131,7 +131,7 @@ class TestLineSegmentIntersection:
         intersects, point = line_segment_intersection(p1, p2, p3, p4)
 
         assert intersects is False
-        assert point is None
+        assert all(np.isnan(value) for value in point)
 
     def test_very_short_segment_below_threshold(self, frame: Frame):
         """Test that very short segments are rejected."""

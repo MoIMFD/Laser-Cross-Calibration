@@ -5,12 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+from hazy import Point
 
 from laser_cross_calibration.constants import INTERSECTION_THRESHOLD
 
 if TYPE_CHECKING:
-    from hazy import Point
-
     from laser_cross_calibration.tracing.ray import OpticalRay
 
 
@@ -20,7 +19,7 @@ def line_segment_intersection(
     p3: Point,
     p4: Point,
     threshold: float = INTERSECTION_THRESHOLD,
-) -> tuple[bool, Point | None]:
+) -> tuple[bool, Point]:
     """
     Find intersection between two 3D line segments.
 
@@ -44,7 +43,7 @@ def line_segment_intersection(
     len2_sq = np.dot(d2, d2)
 
     if len1_sq < threshold**2 or len2_sq < threshold**2:
-        return False, None
+        return False, Point.create_nan(p1.frame)
 
     a = len1_sq
     b = np.dot(d1, d2)
@@ -74,13 +73,13 @@ def line_segment_intersection(
                     intersection_point = p1 + t_mid * d1
                     return True, intersection_point
 
-        return False, None
+        return False, Point.create_nan(p1.frame)
 
     s = (b * e - c * d) / denom
     t = (a * e - b * d) / denom
 
     if not (0 <= s <= 1 and 0 <= t <= 1):
-        return False, None
+        return False, Point.create_nan(p1.frame)
 
     point1 = p1 + s * d1
     point2 = p3 + t * d2
