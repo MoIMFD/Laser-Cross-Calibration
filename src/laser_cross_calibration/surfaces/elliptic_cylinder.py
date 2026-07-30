@@ -6,6 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from laser_cross_calibration.constants import VSMALL, VVSMALL
+from laser_cross_calibration.exceptions import InvalidGeometryError
 from laser_cross_calibration.surfaces.base import (
     IntersectionResult,
     Surface,
@@ -42,7 +43,12 @@ class EllipticCylinder(Surface):
         """
         super().__init__(**kwargs)
         self.center = center
-        self.axis = axis.normalize()
+        try:
+            self.axis = axis.normalize()
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "Cannot create elliptic cylinder with zero-length axis"
+            ) from exc
         self.major_radius = float(major_radius)
         self.minor_radius = float(minor_radius)
         self.display_size = display_size
@@ -51,7 +57,13 @@ class EllipticCylinder(Surface):
         major_dir = major_axis_direction
         # Project major direction onto plane perpendicular to axis
         major_dir = major_dir - np.dot(major_dir, self.axis) * self.axis
-        self.major_axis = major_dir.normalize()
+        try:
+            self.major_axis = major_dir.normalize()
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "Cannot create elliptic cylinder: major_axis_direction is "
+                "parallel to axis"
+            ) from exc
         self.minor_axis = self.axis.cross(self.major_axis).normalize()
 
     def intersect(self, ray: OpticalRay) -> IntersectionResult:

@@ -6,6 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from laser_cross_calibration.constants import VSMALL, VVSMALL
+from laser_cross_calibration.exceptions import InvalidGeometryError
 from laser_cross_calibration.surfaces.base import (
     IntersectionResult,
     Surface,
@@ -29,7 +30,12 @@ class InfiniteCylinder(Surface):
     ):
         super().__init__(**kwargs)
         self.center = center
-        self.axis = axis.normalize()
+        try:
+            self.axis = axis.normalize()
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "Cannot create cylinder with zero-length axis"
+            ) from exc
         self.radius = float(radius)
         self.display_size = display_size
 

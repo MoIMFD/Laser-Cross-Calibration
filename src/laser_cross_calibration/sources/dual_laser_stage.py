@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Self, Unpack
 import plotly.graph_objects as go
 from hazy.utils import check_same_frame
 
+from laser_cross_calibration.exceptions import InvalidGeometryError
 from laser_cross_calibration.sources.base import LaserSource, LaserSourceTypedDict
 
 if TYPE_CHECKING:
@@ -40,12 +41,28 @@ class DualLaserStageSource(LaserSource):
             direction: Direction vector of the laser beam (will be normalized)
         """
         super().__init__(**kwargs)
-        check_same_frame(origin, arm1, arm2, direction1, direction2)
+        try:
+            check_same_frame(origin, arm1, arm2, direction1, direction2)
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "DualLaserStageSource origin, arms and directions must share "
+                "the same coordinate frame"
+            ) from exc
         self.origin = origin
         self.arm1 = arm1
         self.arm2 = arm2
-        self.direction1 = direction1.normalize()
-        self.direction2 = direction2.normalize()
+        try:
+            self.direction1 = direction1.normalize()
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "Cannot create laser source with zero-length direction1"
+            ) from exc
+        try:
+            self.direction2 = direction2.normalize()
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "Cannot create laser source with zero-length direction2"
+            ) from exc
 
     @property
     def beam_origin1(self) -> Point:

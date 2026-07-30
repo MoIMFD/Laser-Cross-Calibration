@@ -13,6 +13,8 @@ from hazy import (
 from hazy.utils import check_same_frame
 from scipy.spatial.transform import Rotation as R
 
+from laser_cross_calibration.exceptions import InvalidGeometryError
+
 if TYPE_CHECKING:
     from hazy import Frame
 
@@ -47,13 +49,23 @@ class OpticalRay:
             direction: Initial direction vector (will be normalized)
 
         Raises:
-            ValueError: If direction vector is zero or origin/direction have wrong shape
+            InvalidGeometryError: If direction vector is zero or origin/direction
+                have mismatched frames or wrong types
         """
-        # Validate and convert inputs, use np.array to create an independent copy
-        check_same_frame(origin, direction)
+        try:
+            check_same_frame(origin, direction)
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "Ray origin and direction must be Point/Vector with a shared frame"
+            ) from exc
         # Store initial state
         self.origin = origin
-        self.initial_direction = direction.normalize()
+        try:
+            self.initial_direction = direction.normalize()
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "Cannot create ray with zero-length direction"
+            ) from exc
 
         # Current state
         self.current_position: Point = self.origin.copy()

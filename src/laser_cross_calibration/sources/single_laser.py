@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Self
 
 from hazy.utils import check_same_frame
 
+from laser_cross_calibration.exceptions import InvalidGeometryError
 from laser_cross_calibration.sources.base import LaserSource
 from laser_cross_calibration.tracing.ray import OpticalRay
 
@@ -30,7 +31,13 @@ class SingleLaserSource(LaserSource):
             direction: Direction vector of the laser beam (will be normalized)
         """
         super().__init__(**kwargs)
-        check_same_frame(origin, direction)
+        try:
+            check_same_frame(origin, direction)
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "SingleLaserSource origin and direction must share the same "
+                "coordinate frame"
+            ) from exc
         self.origin = origin
         self.direction = direction
 

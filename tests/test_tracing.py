@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
+from laser_cross_calibration.exceptions import InvalidGeometryError
 from laser_cross_calibration.tracing import OpticalRay
 from tests.utils import assert_vectors_close
 
@@ -44,20 +45,18 @@ class TestOpticalRay:
         assert len(ray.segment_distances) == 0
 
     def test_invalid_origin_type(self, frame: Frame):
-        """Test that invalid origin type raises ValueError."""
-        with pytest.raises(RuntimeError, match="Expected object with frame attribute"):
+        """Test that invalid origin type raises InvalidGeometryError."""
+        with pytest.raises(InvalidGeometryError):
             OpticalRay(origin=np.array([1.0, 2.0, 3.0]), direction=frame.x_axis)
 
     def test_invalid_direction_type(self, frame: Frame):
-        """Test that invalid direction shape raises ValueError."""
-        with pytest.raises(RuntimeError, match="Expected object with frame attribute"):
+        """Test that invalid direction shape raises InvalidGeometryError."""
+        with pytest.raises(InvalidGeometryError):
             OpticalRay(origin=frame.origin, direction=np.array([1.0, 0.0, 2.0]))
 
     def test_zero_direction_raises_error(self, frame: Frame):
-        """Test that zero direction vector raises ValueError."""
-        with pytest.raises(
-            RuntimeError, match="Can not normalize vector with zero length Vector"
-        ):
+        """Test that zero direction vector raises InvalidGeometryError."""
+        with pytest.raises(InvalidGeometryError, match="zero-length direction"):
             OpticalRay(origin=frame.origin, direction=frame.vector(0.0, 0.0, 0.0))
 
     def test_propagate(self, frame: Frame, air):

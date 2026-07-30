@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from hazy.utils import check_same_frame
 
 from laser_cross_calibration.constants import VSMALL
+from laser_cross_calibration.exceptions import InvalidGeometryError
 from laser_cross_calibration.materials import AIR
 from laser_cross_calibration.surfaces.base import (
     IntersectionResult,
@@ -45,14 +46,25 @@ class Plane(Surface):
             **kwargs: Additional arguments passed to Surface constructor
 
         Raises:
-            ValueError: If normal vector is zero
+            InvalidGeometryError: If normal vector is zero or point/normal
+                have mismatched frames
         """
-        check_same_frame(point, normal)
+        try:
+            check_same_frame(point, normal)
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "Plane point and normal must share the same coordinate frame"
+            ) from exc
         super().__init__(**kwargs)
 
         self.display_size = display_size
         self.point = point
-        self.normal = normal.normalize()
+        try:
+            self.normal = normal.normalize()
+        except RuntimeError as exc:
+            raise InvalidGeometryError(
+                "Cannot create plane with zero-length normal"
+            ) from exc
 
     def intersect(self, ray: OpticalRay) -> IntersectionResult:
         """Calculate the intersection between a ray and this plane.
