@@ -247,17 +247,17 @@ class OpticalRay:
     @classmethod
     def ray_x(cls, origin: Point) -> OpticalRay:
         """Create a ray facing towards positive x axis."""
-        direction = Vector.unit_x(frame=origin.frame)
+        direction = origin.frame.x_axis
         return cls(origin=origin, direction=direction)
 
     @classmethod
     def ray_y(cls, origin: Point) -> OpticalRay:
         """Create a ray facing towards positive y axis."""
-        direction = Vector.unit_y(frame=origin.frame)
+        direction = origin.frame.y_axis
         return cls(origin=origin, direction=direction)
 
     @classmethod
     def ray_z(cls, origin: Point) -> OpticalRay:
         """Create a ray facing towards positive z axis."""
-        direction = Vector.unit_z(frame=origin.frame)
+        direction = origin.frame.z_axis
         return cls(origin=origin, direction=direction)
