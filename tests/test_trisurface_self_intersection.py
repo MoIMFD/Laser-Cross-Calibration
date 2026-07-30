@@ -15,7 +15,7 @@ ends up back in the incident medium for the rest of its path instead of
 staying in the transmitted one.
 
 The reproducing mesh below is a 13-triangle patch extracted verbatim (vertex
-positions and winding) from `example-data/stl-files/simple-bend-outer.stl`
+positions and winding) from `examples/stl-files/simple-bend-outer.stl`
 around the exact triangle a straight probe ray hits, so this is real
 mesh data, not a synthetic edge case. A single flat 2-triangle plane in the
 same orientation does NOT reproduce it, so the fault seems specific to a
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from hazy import Frame
 
 # Vertex positions and winding taken as-is from the outer wall mesh in
-# example-data/stl-files/simple-bend-outer.stl (triangle containing the point
+# examples/stl-files/simple-bend-outer.stl (triangle containing the point
 # hit by a straight ray at x=0, y=-0.07, travelling in +z), plus its
 # geometric neighbors sharing a vertex.
 _PATCH_VERTICES = np.array(
