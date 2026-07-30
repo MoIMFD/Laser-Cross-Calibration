@@ -118,7 +118,6 @@ class OpticalSystem:
             )
 
             if interface is None:
-                ray.propagate(self.final_propagation_distance, current_medium)
                 break
 
             if intersection is not None:
