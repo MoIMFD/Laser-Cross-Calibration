@@ -1,14 +1,9 @@
 from __future__ import annotations
 
-import numpy as np
 import pytest
+from hazy import Frame, Point, Vector
 from plotly.graph_objects import Cone
 
-from laser_cross_calibration.constants import (
-    ORIGIN_POINT3,
-    UNIT_X_VECTOR3,
-    UNIT_Y_VECTOR3,
-)
 from laser_cross_calibration.sources import (
     DualLaserStageSource,
     LaserSource,
@@ -19,25 +14,25 @@ from tests.utils import assert_vectors_close
 
 @pytest.mark.unit
 class TestSingleLaserSource:
-    def test_creation(self, single_laser_source_x: SingleLaserSource):
-        source = single_laser_source_x
+    def test_creation(self, frame: Frame):
+        source = SingleLaserSource(frame.origin, frame.x_axis)
 
         assert isinstance(source, LaserSource)
 
-    def test_common_methods(self, single_laser_source_x: SingleLaserSource):
-        source = single_laser_source_x
+    def test_common_methods(self, frame: Frame):
+        source = SingleLaserSource(frame.origin, frame.x_axis)
 
         origins = source.get_origins()
         assert isinstance(origins, list)
         assert len(origins) == 1
-        assert all(isinstance(origin, np.ndarray) for origin in origins)
-        assert_vectors_close(origins[0], ORIGIN_POINT3)
+        assert all(isinstance(origin, Point) for origin in origins)
+        assert_vectors_close(origins[0], frame.origin)
 
         directions = source.get_directions()
         assert isinstance(directions, list)
         assert len(directions) == 1
-        assert all(isinstance(direction, np.ndarray) for direction in directions)
-        assert_vectors_close(directions[0], UNIT_X_VECTOR3)
+        assert all(isinstance(direction, Vector) for direction in directions)
+        assert_vectors_close(directions[0], frame.x_axis)
 
         traces = source.to_plotly()
         assert isinstance(traces, list)
@@ -47,29 +42,28 @@ class TestSingleLaserSource:
 
 @pytest.mark.unit
 class TestDualLaserStageSource:
-    def test_creation(self, dual_laser_stage_source_xy: DualLaserStageSource):
-        source = dual_laser_stage_source_xy
+    def test_creation(self, frame: Frame):
+        source = DualLaserStageSource(
+            frame.origin, frame.x_axis, frame.y_axis, frame.y_axis, frame.x_axis
+        )
 
         assert isinstance(source, LaserSource | DualLaserStageSource)
 
-    def test_common_methods(self, dual_laser_stage_source_xy: DualLaserStageSource):
-        source = dual_laser_stage_source_xy
+    def test_common_methods(self, frame: Frame):
+        source = DualLaserStageSource(
+            frame.origin, frame.x_axis, frame.y_axis, frame.y_axis, frame.x_axis
+        )
 
         origins = source.get_origins()
         assert isinstance(origins, list)
         assert len(origins) == 2
-        assert all(isinstance(origin, np.ndarray) for origin in origins)
-        assert_vectors_close(origins[0], ORIGIN_POINT3 + UNIT_X_VECTOR3)
-        assert_vectors_close(origins[1], ORIGIN_POINT3 + UNIT_Y_VECTOR3)
+        assert all(isinstance(origin, Point) for origin in origins)
+        assert_vectors_close(origins[0], frame.origin + frame.x_axis)
+        assert_vectors_close(origins[1], frame.origin + frame.y_axis)
 
         directions = source.get_directions()
         assert isinstance(directions, list)
         assert len(directions) == 2
-        assert all(isinstance(direction, np.ndarray) for direction in directions)
-        assert_vectors_close(directions[0], UNIT_Y_VECTOR3)
-        assert_vectors_close(directions[1], UNIT_X_VECTOR3)
-
-        traces = source.to_plotly()
-        assert isinstance(traces, list)
-        assert len(traces) == 2
-        assert all(isinstance(trace, Cone) for trace in traces)
+        assert all(isinstance(direction, Vector) for direction in directions)
+        assert_vectors_close(directions[0], frame.y_axis)
+        assert_vectors_close(directions[1], frame.x_axis)

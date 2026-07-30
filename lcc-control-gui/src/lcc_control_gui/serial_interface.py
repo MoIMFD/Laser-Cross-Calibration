@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import contextlib
 import platform
+import re
 import threading
 import time
+from dataclasses import dataclass
 from enum import StrEnum
 from glob import glob
 from typing import TYPE_CHECKING, NamedTuple
@@ -14,6 +16,51 @@ from serial.tools import list_ports
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+# Marlin serial protocol reference (what this module parses for)
+# ----------------------------------------------------------------------
+# Marlin (and Marlin-compatible firmware) speaks a line-based, free-text
+# protocol over serial - just '\n'/'\r'-terminated lines, no framing, no
+# command IDs. Replies are matched to the command that triggered them
+# purely by arrival order. The line shapes this module cares about:
+#
+#   Boot greeting (once, right after reset/power-up/DTR-toggle):
+#       start
+#       Marlin 2.1.2
+#       echo: Last Updated: ... | Author: ...
+#       echo:Compiled: ...
+#       echo: Free Memory: ...  PlannerBufferBytes: ...
+#       echo:Hardcoded Default Settings Loaded
+#
+#   Command acknowledgement (after (almost) every processed line):
+#       ok
+#       ok N123 P15 B3                            (M110 line numbering / planner info)
+#       ok T:210.00 /210.00 B:60.00 /60.00 @:127 B@:0   (e.g. reply to M105)
+#
+#   Temperature report (M105), independent of the "ok" that follows it:
+#       T:210.00 /210.00 B:60.00 /60.00 @:127 B@:0
+#
+#   Busy/keepalive (HOST_KEEPALIVE_FEATURE; sent every couple of seconds
+#   while a long-running command blocks the queue - no "ok" until done):
+#       echo:busy: processing
+#       echo:busy: paused for user
+#       echo:busy: paused for input
+#   Real Marlin always includes the "echo:" prefix and the colon after
+#   "busy" - there is no bare "busy" line. This matches Printrun/
+#   Pronterface's own line-ignore regex: `.*busy: ?processing|.*busy: ?heating`.
+#
+#   Recoverable command error (that one command failed, next one is fine):
+#       Error:Invalid command
+#       Error:Unknown command: "FOO"
+#
+#   Halt / kill (M112, thermal runaway, hard fault - device stops
+#   responding to *everything*, including further status queries, until
+#   a physical reset re-triggers the boot greeting above):
+#       Error:Printer halted. kill() called!
+#
+#   Line-number/checksum resend request (only relevant if the host uses
+#   M110 + line numbers + checksums; this class currently does not):
+#       Resend: 123
 
 
 class SerialInterface:
@@ -29,12 +76,37 @@ class SerialInterface:
         WARNING = "warning"
         ERROR = "error"
 
+    class ConnectionStatus(StrEnum):
+        DISCONNECTED = "disconnected"
+        CONNECTING = "connecting"
+        ONLINE = "online"
+        HALTED = "halted"
+
+    class LineKind(StrEnum):
+        LOG = "log"
+        STATUS_OK = "status_ok"
+        STATUS_BUSY = "status_busy"
+        STATUS_ERROR = "status_error"
+        PLAIN = "plain"
+
+    @dataclass(frozen=True, slots=True)
+    class ClassifiedLine:
+        raw: str
+        kind: SerialInterface.LineKind
+        log_level: SerialInterface.LogLevel | None = None
+        log_text: str = ""
+        error_detail: str = ""
+        is_online_signal: bool = False
+        is_halt_signal: bool = False
+
     log_level_prefix_map = {
         "D)": LogLevel.DEBUG,
         "I)": LogLevel.INFO,
         "W)": LogLevel.WARNING,
         "E)": LogLevel.ERROR,
     }
+
+    _temp_line_re = re.compile(r"\bt:")
 
     def __init__(
         self,
@@ -60,7 +132,9 @@ class SerialInterface:
         self._response_string = ""
         self._response_status = None
         self._response_error_msg = None
-        self._online = False
+        self._connection_status = SerialInterface.ConnectionStatus.DISCONNECTED
+        self._online_wait_thread: threading.Thread | None = None
+        self._last_line_at = time.time()
         self._running = True
 
         # Greetings that indicate printer is ready (like Pronterface)
@@ -96,74 +170,155 @@ class SerialInterface:
     def _reader_loop(self):
         buffer = ""
         while self._running:
-            try:
-                ser = self.serial
-                if ser is not None and ser.is_open:
-                    if ser.in_waiting:
-                        char = ser.read(1).decode("ascii", errors="ignore")
-                        if char in ["\n", "\r"]:
-                            if len(buffer) > 0:
+            buffer = self._reader_loop_iteration(buffer)
+
+    def _reader_loop_iteration(self, buffer: str) -> str:
+        try:
+            ser = self.serial
+            if ser is not None and ser.is_open:
+                if ser.in_waiting:
+                    char = ser.read(1).decode("ascii", errors="ignore")
+                    if char in ["\n", "\r"]:
+                        if len(buffer) > 0:
+                            try:
                                 self._handle_line(buffer)
-                                buffer = ""
-                        else:
-                            buffer += char
+                            except Exception as e:
+                                print(
+                                    f"{Fore.MAGENTA}[SerialInterface] Error handling "
+                                    f"line {buffer!r}: {e}{Style.RESET_ALL}"
+                                )
+                            buffer = ""
                     else:
-                        time.sleep(0.001)
+                        buffer += char
                 else:
                     time.sleep(0.001)
-            except (serial.SerialException, OSError, TypeError) as e:
-                print(
-                    Fore.MAGENTA
-                    + f"[SerialInterface] Lost connection: {e}"
-                    + Style.RESET_ALL
+            else:
+                time.sleep(0.001)
+        except (serial.SerialException, OSError, TypeError) as e:
+            print(
+                f"{Fore.MAGENTA}[SerialInterface] Lost connection: {e}{Style.RESET_ALL}"
+            )
+            with self._lock:
+                self._set_connection_status(
+                    SerialInterface.ConnectionStatus.DISCONNECTED
                 )
-                try:
-                    if self.serial is not None and self.serial.is_open:
-                        self.serial.close()
-                except Exception:
-                    pass
+            try:
+                if self.serial is not None and self.serial.is_open:
+                    self.serial.close()
+            except Exception:
+                pass
 
-                self.serial = None
-                self.connect(self.reconnect_timeout)
+            self.serial = None
+            if self.connect(self.reconnect_timeout):
+                with self._lock:
+                    self._set_connection_status(
+                        SerialInterface.ConnectionStatus.CONNECTING
+                    )
+                self._trigger_online_handshake()
+            buffer = ""
+
+        return buffer
+
+    def _set_connection_status(self, status: ConnectionStatus) -> None:
+        """Update connection status. Caller must hold self._lock."""
+        if status == self._connection_status:
+            return
+        self._connection_status = status
+        self._condition.notify_all()
+
+    def _trigger_online_handshake(self) -> None:
+        with self._lock:
+            thread = self._online_wait_thread
+            if thread is not None and thread.is_alive():
+                return
+            self._online_wait_thread = threading.Thread(
+                target=self._wait_until_online, daemon=True
+            )
+        self._online_wait_thread.start()
+
+    @property
+    def is_online(self) -> bool:
+        return self._connection_status == SerialInterface.ConnectionStatus.ONLINE
+
+    @property
+    def connection_status(self) -> ConnectionStatus:
+        return self._connection_status
+
+    def _classify_line(self, line: str) -> ClassifiedLine:
+        log_level, log_text = self._check_log_msg(line)
+        if log_level is not None:
+            return SerialInterface.ClassifiedLine(
+                line,
+                SerialInterface.LineKind.LOG,
+                log_level=log_level,
+                log_text=log_text,
+            )
+
+        line_lower = line.lower()
+        if line_lower.startswith("ok"):
+            return SerialInterface.ClassifiedLine(
+                line, SerialInterface.LineKind.STATUS_OK, is_online_signal=True
+            )
+        if "busy:" in line_lower:
+            return SerialInterface.ClassifiedLine(
+                line, SerialInterface.LineKind.STATUS_BUSY, is_online_signal=True
+            )
+        if line_lower.startswith("error"):
+            parts = line.split(":", 1)
+            detail = parts[1].strip() if len(parts) > 1 else ""
+            return SerialInterface.ClassifiedLine(
+                line,
+                SerialInterface.LineKind.STATUS_ERROR,
+                error_detail=detail,
+                is_online_signal=True,
+                is_halt_signal="printer halted" in line_lower,
+            )
+
+        is_online = line_lower.startswith(self._greetings) or bool(
+            self._temp_line_re.search(line_lower)
+        )
+        return SerialInterface.ClassifiedLine(
+            line, SerialInterface.LineKind.PLAIN, is_online_signal=is_online
+        )
+
+    def _dispatch_classified_line(self, c: ClassifiedLine) -> None:
+        self._last_line_at = time.time()
+        self._condition.notify_all()
+
+        if c.is_online_signal:
+            self._set_connection_status(SerialInterface.ConnectionStatus.ONLINE)
+        if c.is_halt_signal:
+            self._set_connection_status(SerialInterface.ConnectionStatus.HALTED)
+            if self.log_message_callback:
+                self.log_message_callback(SerialInterface.LogLevel.ERROR, c.raw)
+
+        if c.kind == SerialInterface.LineKind.LOG:
+            if self.log_message_callback:
+                self.log_message_callback(c.log_level, c.log_text)
+            return
+
+        if self._waiting_for_response:
+            if c.kind == SerialInterface.LineKind.STATUS_OK:
+                self._response_status = SerialInterface.ReplyStatus.OK
+                self._condition.notify()
+            elif c.kind == SerialInterface.LineKind.STATUS_BUSY:
+                self._response_status = SerialInterface.ReplyStatus.BUSY
+                self._condition.notify()
+            elif c.kind == SerialInterface.LineKind.STATUS_ERROR:
+                self._response_status = SerialInterface.ReplyStatus.ERROR
+                self._response_error_msg = c.error_detail
+                self._condition.notify()
+            else:
+                self._response_string += c.raw + "\n"
+            return
+
+        if self.unsolicited_msg_callback:
+            self.unsolicited_msg_callback(c.raw)
 
     def _handle_line(self, line: str):
+        classified = self._classify_line(line)
         with self._lock:
-            log_level, log_msg = self._check_log_msg(line)
-
-            if log_level is not None:
-                if self.log_message_callback:
-                    self.log_message_callback(log_level, log_msg)
-            elif self._waiting_for_response:
-                line_lower = line.lower()
-                if line_lower.startswith("ok"):
-                    self._response_status = SerialInterface.ReplyStatus.OK
-                    self._condition.notify()
-                elif line_lower.startswith("busy"):
-                    self._response_status = SerialInterface.ReplyStatus.BUSY
-                    self._condition.notify()
-                elif line_lower.startswith("error"):
-                    self._response_status = SerialInterface.ReplyStatus.ERROR
-                    parts = line.split(":", 1)
-                    self._response_error_msg = (
-                        parts[1].strip() if len(parts) > 1 else ""
-                    )
-                    self._condition.notify()
-                else:
-                    self._response_string += line + "\n"
-            else:
-                line_lower = line.lower()
-                # Check for greetings, ok, or temperature responses that indicate online
-                # Marlin sends "Marlin X.Y.Z" on boot, and "ok" in response to commands
-                is_online_indicator = (
-                    line_lower.startswith(self._greetings)
-                    or line_lower.startswith("ok")
-                    or "t:" in line_lower
-                )
-                if is_online_indicator and not self._online:
-                    self._online = True
-                    self._condition.notify_all()
-                if self.unsolicited_msg_callback:
-                    self.unsolicited_msg_callback(line)
+            self._dispatch_classified_line(classified)
 
     def _check_log_msg(self, msg: str):
         if len(msg) < 2:
@@ -178,38 +333,50 @@ class SerialInterface:
         greeting messages). Tolerates empty lines and timing variations during
         bootloader/startup phase.
         """
-        print(Fore.YELLOW + "[SerialInterface] Waiting for device..." + Style.RESET_ALL)
+        print(f"{Fore.YELLOW}[SerialInterface] Waiting for device...{Style.RESET_ALL}")
 
         deadline = time.time() + timeout
-        empty_line_count = 0
-        max_empty_lines = 15  # Like Pronterface
 
-        while time.time() < deadline and not self._online:
+        while time.time() < deadline and not self.is_online:
             # Send M105 temperature query - Marlin always responds to this
             self._send_raw("M105")
 
             # Wait for response, checking periodically
             poll_deadline = time.time() + 2.0
-            while time.time() < poll_deadline and not self._online:
+            while time.time() < poll_deadline and not self.is_online:
                 with self._lock:
                     # Check if we got a valid response
-                    if self._online:
+                    if self.is_online:
                         break
                     self._condition.wait(timeout=0.1)
 
-            if self._online:
+            if self.is_online:
                 break
 
-            empty_line_count += 1
-            if empty_line_count >= max_empty_lines:
-                empty_line_count = 0
-
-        if self._online:
-            print(Fore.GREEN + "[SerialInterface] Device ready" + Style.RESET_ALL)
+        if self.is_online:
+            self._drain_until_quiet()
+            print(f"{Fore.GREEN}[SerialInterface] Device ready{Style.RESET_ALL}")
         else:
-            print(
-                Fore.RED + "[SerialInterface] Device not responding" + Style.RESET_ALL
-            )
+            print(f"{Fore.RED}[SerialInterface] Device not responding{Style.RESET_ALL}")
+
+    def _drain_until_quiet(self, quiet: float = 0.3, timeout: float = 2.0) -> None:
+        """Wait until no new line has been dispatched for `quiet` seconds.
+
+        Used right after the online handshake to let any extra in-flight
+        replies (e.g. from redundant M105 probes sent while the device was
+        still booting) settle before normal command traffic begins, so they
+        don't get misattributed as the response to the first real command.
+        """
+        with self._lock:
+            deadline = time.time() + timeout
+            while True:
+                remaining_quiet = quiet - (time.time() - self._last_line_at)
+                if remaining_quiet <= 0:
+                    return
+                remaining_total = deadline - time.time()
+                if remaining_total <= 0:
+                    return
+                self._condition.wait(timeout=min(remaining_quiet, remaining_total))
 
     def _send_raw(self, cmd: str):
         """Send a command without waiting for response (for startup polling)."""
@@ -226,6 +393,12 @@ class SerialInterface:
             if not self.serial or not self.serial.is_open:
                 return SerialInterface.ReplyStatus.ERROR, "Serial not open"
 
+            if self._connection_status == SerialInterface.ConnectionStatus.HALTED:
+                return (
+                    SerialInterface.ReplyStatus.ERROR,
+                    "Device halted (kill() called) - power-cycle or reset required",
+                )
+
             self._waiting_for_response = True
             self._response_string = ""
             self._response_error_msg = ""
@@ -233,12 +406,14 @@ class SerialInterface:
 
             cmd = cmd.strip() + "\n"
             print(
-                Fore.CYAN
-                + f"[{self.__class__.__qualname__}] TX: {cmd.strip()}"
-                + Style.RESET_ALL
+                f"{Fore.CYAN}[{self.__class__.__qualname__}] TX: {cmd.strip()}"
+                f"{Style.RESET_ALL}"
             )
             if self.command_msg_callback:
                 self.command_msg_callback(cmd, None, "")
+
+            with contextlib.suppress(serial.SerialException, OSError):
+                self.serial.reset_input_buffer()
 
             self.serial.write(cmd.encode("ascii"))
             self.serial.flush()
@@ -258,9 +433,9 @@ class SerialInterface:
                     self._waiting_for_response = False
                     msg = (
                         f"[{self.__class__.__qualname__}] Command "
-                        + "timeout, device didn't reply"
+                        "timeout, device didn't reply"
                     )
-                    print(Fore.MAGENTA + msg + Style.RESET_ALL)
+                    print(f"{Fore.MAGENTA}{msg}{Style.RESET_ALL}")
                     return (
                         SerialInterface.ReplyStatus.TIMEOUT,
                         self._response_string,
@@ -278,9 +453,8 @@ class SerialInterface:
 
     def close(self):
         print(
-            Fore.MAGENTA
-            + f"[SerialInterface] Disconnecting from port '{self.port}'..."
-            + Style.RESET_ALL
+            f"{Fore.MAGENTA}[SerialInterface] Disconnecting from port '{self.port}'..."
+            f"{Style.RESET_ALL}"
         )
         self._running = False
         if self.serial and self.serial.is_open:
@@ -288,7 +462,7 @@ class SerialInterface:
         if self._reader_thread and self._reader_thread.is_alive():
             self._reader_thread.join(timeout=1.0)
         print(
-            Fore.GREEN + "[SerialInterface] Disconnected successfully" + Style.RESET_ALL
+            f"{Fore.GREEN}[SerialInterface] Disconnected successfully{Style.RESET_ALL}"
         )
 
 
@@ -300,7 +474,7 @@ def scan_ports():
         list: List of available serial port names
     """
     print(
-        Fore.WHITE + "[SerialInterface] Scanning for serial ports..." + Style.RESET_ALL
+        f"{Fore.WHITE}[SerialInterface] Scanning for serial ports...{Style.RESET_ALL}"
     )
 
     # Get a list of all port objects

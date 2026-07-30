@@ -4,12 +4,12 @@ import numpy as np
 import pytest
 from hazy import Frame
 
-from laser_cross_calibration import materials, surfaces
+from laser_cross_calibration import materials, surfaces, tracing
 
 
 @pytest.fixture
-def global_frame():
-    return Frame.root
+def frame():
+    return Frame()
 
 
 @pytest.fixture
@@ -27,80 +27,80 @@ def glass_bk7():
     return materials.GLASS_BK7
 
 
-# @pytest.fixture(scope="function")
-# def simple_ray_100():
-#     return tracing.OpticalRay(
-#         origin=ORIGIN_POINT3,
-#         direction=UNIT_X_VECTOR3,
-#     )
-
-
-# @pytest.fixture(scope="function")
-# def simple_ray_010():
-#     return tracing.OpticalRay(
-#         origin=ORIGIN_POINT3,
-#         direction=UNIT_Y_VECTOR3,
-#     )
-
-
-# @pytest.fixture(scope="function")
-# def simple_ray_001():
-#     return tracing.OpticalRay(
-#         origin=ORIGIN_POINT3,
-#         direction=UNIT_Z_VECTOR3,
-#     )
-
-
-# @pytest.fixture(scope="function")
-# def simple_ray_110():
-#     return tracing.OpticalRay(
-#         origin=ORIGIN_POINT3,
-#         direction=UNIT_X_VECTOR3 + UNIT_Y_VECTOR3,
-#     )
-
-
-# @pytest.fixture(scope="function")
-# def simple_ray_101():
-#     return tracing.OpticalRay(
-#         origin=ORIGIN_POINT3,
-#         direction=UNIT_X_VECTOR3 + UNIT_Z_VECTOR3,
-#     )
-
-
-# @pytest.fixture(scope="function")
-# def simple_ray_011():
-#     return tracing.OpticalRay(
-#         origin=ORIGIN_POINT3,
-#         direction=UNIT_Y_VECTOR3 + UNIT_Z_VECTOR3,
-#     )
+@pytest.fixture(scope="function")
+def simple_ray_100(frame: Frame):
+    return tracing.OpticalRay(
+        origin=frame.origin,
+        direction=frame.x_axis,
+    )
 
 
 @pytest.fixture(scope="function")
-def single_triangle_surface_xy() -> surfaces.TriSurface:
+def simple_ray_010(frame: Frame):
+    return tracing.OpticalRay(
+        origin=frame.origin,
+        direction=frame.y_axis,
+    )
+
+
+@pytest.fixture(scope="function")
+def simple_ray_001(frame: Frame):
+    return tracing.OpticalRay(
+        origin=frame.origin,
+        direction=frame.z_axis,
+    )
+
+
+@pytest.fixture(scope="function")
+def simple_ray_110(frame: Frame):
+    return tracing.OpticalRay(
+        origin=frame.origin,
+        direction=frame.x_axis + frame.z_axis,
+    )
+
+
+@pytest.fixture(scope="function")
+def simple_ray_101(frame: Frame):
+    return tracing.OpticalRay(
+        origin=frame.origin,
+        direction=frame.x_axis + frame.z_axis,
+    )
+
+
+@pytest.fixture(scope="function")
+def simple_ray_011(frame: Frame):
+    return tracing.OpticalRay(
+        origin=frame.origin,
+        direction=frame.y_axis + frame.z_axis,
+    )
+
+
+@pytest.fixture(scope="function")
+def single_triangle_surface_xy(frame: Frame) -> surfaces.TriSurface:
     """Single triangle in XY plane at Z=0"""
     vertices = np.array([[-1.0, -1.0, 0.0], [1.0, -1.0, 0.0], [0.0, 1.0, 0.0]])
     faces = np.array([[0, 1, 2]])
-    return surfaces.TriSurface(vertices=vertices, faces=faces)
+    return surfaces.TriSurface(frame=frame, vertices=vertices, faces=faces)
 
 
 @pytest.fixture(scope="function")
-def single_triangle_surface_xz() -> surfaces.TriSurface:
+def single_triangle_surface_xz(frame: Frame) -> surfaces.TriSurface:
     """Single triangle in XZ plane at Y=0"""
     vertices = np.array([[-1.0, 0.0, -1.0], [1.0, 0.0, -1.0], [0.0, 0.0, 1.0]])
     faces = np.array([[2, 1, 0]])
-    return surfaces.TriSurface(vertices=vertices, faces=faces)
+    return surfaces.TriSurface(frame=frame, vertices=vertices, faces=faces)
 
 
 @pytest.fixture(scope="function")
-def single_triangle_surface_yz() -> surfaces.TriSurface:
+def single_triangle_surface_yz(frame: Frame) -> surfaces.TriSurface:
     """Single triangle in YZ plane at X=0"""
     vertices = np.asarray([[0.0, 1.0, -1.0], [0.0, 0.0, 1.0], [0.0, -1.0, -1.0]])
     faces = np.asarray([[0, 1, 2]])
-    return surfaces.TriSurface(vertices=vertices, faces=faces)
+    return surfaces.TriSurface(frame=frame, vertices=vertices, faces=faces)
 
 
 @pytest.fixture
-def triangle_box_surface() -> surfaces.TriSurface:
+def triangle_box_surface(frame: Frame) -> surfaces.TriSurface:
     """Simple box (12 triangles, 2 per face) for testing multi-surface intersections."""
     vertices = np.asarray(
         [
@@ -138,23 +138,7 @@ def triangle_box_surface() -> surfaces.TriSurface:
             [1, 6, 2],
         ]
     )
-    return surfaces.TriSurface(vertices=vertices, faces=faces)
-
-
-# @pytest.fixture
-# def single_laser_source_x() -> sources.SingleLaserSource:
-#     return sources.SingleLaserSource(origin=ORIGIN_POINT3, direction=UNIT_X_VECTOR3)
-
-
-# @pytest.fixture
-# def dual_laser_stage_source_xy() -> sources.DualLaserStageSource:
-#     return sources.DualLaserStageSource(
-#         origin=ORIGIN_POINT3,
-#         arm1=UNIT_X_VECTOR3,
-#         arm2=UNIT_Y_VECTOR3,
-#         direction1=UNIT_Y_VECTOR3,
-#         direction2=UNIT_X_VECTOR3,
-#     )
+    return surfaces.TriSurface(frame=frame, vertices=vertices, faces=faces)
 
 
 @pytest.fixture(scope="session")

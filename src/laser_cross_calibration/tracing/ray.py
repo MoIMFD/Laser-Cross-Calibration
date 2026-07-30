@@ -13,11 +13,6 @@ from hazy import (
 from hazy.utils import check_same_frame
 from scipy.spatial.transform import Rotation as R
 
-from laser_cross_calibration.constants import (
-    INTERSECTION_THRESHOLD,
-    VSMALL,
-)
-
 if TYPE_CHECKING:
     from hazy import Frame
 
@@ -252,157 +247,17 @@ class OpticalRay:
     @classmethod
     def ray_x(cls, origin: Point) -> OpticalRay:
         """Create a ray facing towards positive x axis."""
-        direction = Vector.create_unit_x(frame=origin.frame)
+        direction = Vector.unit_x(frame=origin.frame)
         return cls(origin=origin, direction=direction)
 
     @classmethod
     def ray_y(cls, origin: Point) -> OpticalRay:
         """Create a ray facing towards positive y axis."""
-        direction = Vector.create_unit_y(frame=origin.frame)
+        direction = Vector.unit_y(frame=origin.frame)
         return cls(origin=origin, direction=direction)
 
     @classmethod
-    def ray_z(cls, origin=Point) -> OpticalRay:
+    def ray_z(cls, origin: Point) -> OpticalRay:
         """Create a ray facing towards positive z axis."""
-        direction = Vector.create_unit_z(frame=origin.frame)
+        direction = Vector.unit_z(frame=origin.frame)
         return cls(origin=origin, direction=direction)
-
-
-def line_segment_intersection(
-    p1: Point,
-    p2: Point,
-    p3: Point,
-    p4: Point,
-    threshold: float = INTERSECTION_THRESHOLD,
-) -> tuple[bool, Point | None]:
-    """
-    Find intersection between two 3D line segments.
-
-    Uses the closest approach method for two line segments in 3D space.
-
-    Args:
-        p1, p2: Start and end points of first line segment
-        p3, p4: Start and end points of second line segment
-        threshold: Distance threshold for considering intersection
-
-    Returns:
-        Tuple of (intersection_found, intersection_point)
-    """
-    check_same_frame(p1, p2, p3, p4)
-
-    # Convert to numpy arrays
-    p1, p2, p3, p4 = [p for p in [p1, p2, p3, p4]]
-
-    # Direction vectors of the segments
-    d1 = p2 - p1  # Segment 1 vector
-    d2 = p4 - p3  # Segment 2 vector
-
-    # Vector between segment start points
-    w = p1 - p3
-
-    # Check if segments are degenerate (zero length)
-    len1_sq = np.dot(d1, d1)
-    len2_sq = np.dot(d2, d2)
-
-    if len1_sq < threshold or len2_sq < threshold:
-        return False, None
-
-    # Dot products
-    a = len1_sq  # d1·d1
-    b = np.dot(d1, d2)  # d1·d2
-    c = len2_sq  # d2·d2
-    d = np.dot(d1, w)  # d1·w
-    e = np.dot(d2, w)  # d2·w
-
-    denom = a * c - b * b
-
-    # Check if lines are parallel
-    if abs(denom) < threshold:
-        # Lines are parallel - check if they overlap
-        # Project p3 onto line 1
-        if a > threshold:
-            t = -d / a
-            closest_on_1 = p1 + t * d1
-            dist_to_line2 = np.linalg.norm(closest_on_1 - p3)
-
-            if dist_to_line2 < threshold:
-                # Lines are coincident - find overlap
-                t1_start = 0
-                t1_end = 1
-                t2_start = np.dot(p3 - p1, d1) / len1_sq
-                t2_end = np.dot(p4 - p1, d1) / len1_sq
-
-                # Find overlap interval
-                overlap_start = max(t1_start, min(t2_start, t2_end))
-                overlap_end = min(t1_end, max(t2_start, t2_end))
-
-                if overlap_start <= overlap_end:
-                    # Return midpoint of overlap
-                    t_mid = (overlap_start + overlap_end) / 2
-                    intersection_point = p1 + t_mid * d1
-                    return True, intersection_point
-
-        return False, None
-
-    # Solve for parameters of closest approach
-    s = (b * e - c * d) / denom  # Parameter for segment 1
-    t = (a * e - b * d) / denom  # Parameter for segment 2
-
-    # Check if parameters are within [0, 1] (inside segments)
-    if not (0 <= s <= 1 and 0 <= t <= 1):
-        return False, None
-
-    # Calculate closest points
-    point1 = p1 + s * d1
-    point2 = p3 + t * d2
-
-    # Check if points are within threshold distance
-    distance = np.linalg.norm(point2 - point1)
-
-    if distance < threshold:
-        # Return midpoint as intersection
-        intersection_point = (point1 + point2) / 2
-        return True, Point(*intersection_point, frame=p1.frame)
-    else:
-        return False, None
-
-
-def ray_intersection(
-    ray1: OpticalRay, ray2: OpticalRay, threshold: float = VSMALL
-) -> list[Point]:
-    """
-    Find all intersection points between two rays' path segments.
-
-    Checks every segment of ray1 against every segment of ray2 to find
-    where the actual physical ray paths intersect.
-
-    Args:
-        ray1: First optical ray
-        ray2: Second optical ray
-        threshold: Distance threshold for considering intersection
-
-    Returns:
-        List of intersection points (empty if no intersections found)
-    """
-    intersections = []
-
-    # Check all segments of ray1 against all segments of ray2
-    for i in range(len(ray1.segment_distances)):
-        # Ray1 segment endpoints
-        p1_start = ray1.path_positions[i]
-        p1_end = ray1.path_positions[i + 1]
-
-        for j in range(len(ray2.segment_distances)):
-            # Ray2 segment endpoints
-            p2_start = ray2.path_positions[j]
-            p2_end = ray2.path_positions[j + 1]
-
-            # Check intersection between these two segments
-            intersects, point = line_segment_intersection(
-                p1_start, p1_end, p2_start, p2_end, threshold=threshold
-            )
-
-            if intersects:
-                intersections.append(point)
-
-    return intersections

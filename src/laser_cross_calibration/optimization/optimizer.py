@@ -194,7 +194,6 @@ class Optimizer:
                 - success: Whether convergence criteria were met
         """
         original_origin = source.origin.copy()
-        target_frame = target.frame
         target = target.to_frame(source.origin.frame)
 
         def objective(new_origin: NDArray) -> float:
@@ -220,7 +219,7 @@ class Optimizer:
                 "fatol": self.ERROR_TOLERANCE,
             },
         )
-        result.x = target_frame.point(result.x)
+        result.x = source.origin.frame.point(result.x)
         return result
 
     @staticmethod
